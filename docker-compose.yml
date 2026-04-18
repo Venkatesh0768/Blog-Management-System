@@ -1,0 +1,56 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: mysql
+    env_file:
+      - .env
+    ports:
+      - "3306:3306"
+    volumes:
+      - blog_db:/var/lib/mysql
+    networks:
+      - blog-network
+    restart: always
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  blog_backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: blog_backend
+    env_file:
+      - .env
+    ports:
+      - "5000:5000"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - blog-network
+    restart: always
+
+  blog_frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: blog_frontend
+    env_file:
+      - .env
+    ports:
+      - "3000:3000"   
+    depends_on:
+      - blog_backend  
+    restart: always
+    networks:         
+      - blog-network
+
+volumes:
+  blog_db:
+
+networks:
+  blog-network:
+    driver: bridge
