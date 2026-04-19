@@ -4,8 +4,10 @@ import lombok.RequiredArgsConstructor;
 import org.blog.backend.dto.PostDtos.PostRequestDtos.CreatePostRequestDto;
 import org.blog.backend.dto.PostDtos.PostRequestDtos.UpdatePostRequestDto;
 import org.blog.backend.dto.PostDtos.PostResponseDtos.PostResponseDto;
+import org.blog.backend.dto.commentsDto.commentResponseDtos.CommentResponseDto;
 import org.blog.backend.exception.PostNotFoundException;
 import org.blog.backend.exception.UserNotFoundException;
+import org.blog.backend.model.Comment;
 import org.blog.backend.model.Post;
 import org.blog.backend.model.PostImages;
 import org.blog.backend.model.User;
@@ -41,7 +43,7 @@ public class PostServiceImpl implements PostService {
 
         List<PostImages> images = new ArrayList<>();
 
-        if(requestDto.getPrimaryImage() != null){
+        if (requestDto.getPrimaryImage() != null) {
             images.add(
                     PostImages.builder()
                             .post(post)
@@ -51,7 +53,7 @@ public class PostServiceImpl implements PostService {
             );
         }
 
-        if(requestDto.getPrimaryImage() != null) {
+        if (requestDto.getPrimaryImage() != null) {
             for (String url : requestDto.getSecondaryImages()) {
                 images.add(
                         PostImages.builder()
@@ -141,14 +143,34 @@ public class PostServiceImpl implements PostService {
 
 
     private PostResponseDto mapToResponse(Post post) {
+
+        List<UUID> commentIds = new ArrayList<>();
+
+        if (post.getComments() != null) {
+            commentIds = post.getComments().stream()
+                    .filter(c -> c.getParent() == null) // optional: only top-level
+                    .map(Comment::getId)
+                    .toList();
+        }
+
+        // ================= IMAGES (IDs only) =================
+        List<UUID> imageIds = new ArrayList<>();
+
+        if (post.getImages() != null) {
+            imageIds = post.getImages().stream()
+                    .map(PostImages::getId)
+                    .toList();
+        }
+
         return PostResponseDto.builder()
                 .id(post.getId())
                 .title(post.getTitle())
                 .content(post.getContent())
                 .slug(post.getSlug())
                 .postStatus(post.getPostStatus())
-                .postImages(post.getImages())
                 .userId(post.getUser().getId())
+                .commentIds(commentIds)
+                .imageIds(imageIds)
                 .createdAt(post.getCreatedAt())
                 .updatedAt(post.getUpdatedAt())
                 .build();

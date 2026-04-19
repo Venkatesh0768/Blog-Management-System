@@ -1,10 +1,11 @@
 package org.blog.backend.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
+
+import java.util.List;
+
 
 @Entity
 @Getter
@@ -15,20 +16,28 @@ import lombok.Setter;
         @Index(name = "idx_comment_post", columnList = "post_id"),
         @Index(name = "idx_comment_user", columnList = "user_id")
 })
-public class Comment extends BaseModel{
+@Builder
+public class Comment extends BaseModel {
 
-    @Column(columnDefinition = "TEXT")
+    @Column(columnDefinition = "TEXT", nullable = false)
     private String content;
 
-    @ManyToOne
-    @JoinColumn(name = "user_id")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    @JsonIgnore
     private User user;
 
-    @ManyToOne
-    @JoinColumn (name = "post_id")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "post_id", nullable = false)
+    @JsonIgnore
     private Post post;
 
-    @ManyToOne
-    @JoinColumn(name = "parent_id" , nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "parent_id", nullable = true)
+    @JsonIgnore
     private Comment parent;
+
+    @OneToMany(mappedBy = "parent", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("createdAt DESC")
+    private List<Comment> replies;
 }
