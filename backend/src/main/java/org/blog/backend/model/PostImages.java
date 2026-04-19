@@ -1,10 +1,8 @@
 package org.blog.backend.model;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 @Entity
 @Table(name = "post_images", indexes = {
@@ -14,17 +12,17 @@ import lombok.Setter;
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
+@Builder
 public class PostImages extends  BaseModel {
 
     @ManyToOne
+    @JsonBackReference
     @JoinColumn(name = "post_id", nullable = false)
     private Post post;
 
     @Column(name = "image_url")
     private String imageUrl;
 
-    @Column(name = "is_primary")
-    private Boolean isPrimary;
-
-
+    @Column(name = "is_primary", nullable = false)
+    private Boolean isPrimary = false;
 }

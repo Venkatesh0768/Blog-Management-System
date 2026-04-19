@@ -51,4 +51,17 @@ public class GlobalExceptionHandler {
 
         return new ResponseEntity<>(response , HttpStatus.NOT_FOUND);
     }
+
+    @ExceptionHandler(PostNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handlePostNotFoundException(PostNotFoundException exception , WebRequest request){
+        ErrorResponse response = new ErrorResponse(
+                LocalDateTime.now(),
+                HttpStatus.NOT_FOUND.value(),
+                "Not Found Exception",
+                exception.getMessage(),
+                request.getDescription(false).replace("uri" , "")
+        );
+
+        return new ResponseEntity<>(response , HttpStatus.NOT_FOUND);
+    }
 }

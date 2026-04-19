@@ -1,11 +1,9 @@
 package org.blog.backend.model;
 
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 import java.util.List;
 
@@ -14,6 +12,7 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 @Entity
+@Builder
 @Table(name = "posts" , indexes = {
         @Index(name = "idx_post_slug" , columnList = "slug")
 })
@@ -36,6 +35,10 @@ public class Post extends BaseModel{
     @JoinColumn(name = "user_id")
     private User user;
 
-    @OneToMany(mappedBy = "post")
+    @OneToMany(mappedBy = "post" , cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonManagedReference
+    private List<PostImages> images;
+
+    @OneToMany(mappedBy = "post" , cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Comment> comments;
 }
