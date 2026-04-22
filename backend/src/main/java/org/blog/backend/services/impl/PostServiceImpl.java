@@ -4,7 +4,6 @@ import lombok.RequiredArgsConstructor;
 import org.blog.backend.dto.PostDtos.PostRequestDtos.CreatePostRequestDto;
 import org.blog.backend.dto.PostDtos.PostRequestDtos.UpdatePostRequestDto;
 import org.blog.backend.dto.PostDtos.PostResponseDtos.PostResponseDto;
-import org.blog.backend.dto.commentsDto.commentResponseDtos.CommentResponseDto;
 import org.blog.backend.exception.PostNotFoundException;
 import org.blog.backend.exception.UserNotFoundException;
 import org.blog.backend.model.Comment;
@@ -108,29 +107,12 @@ public class PostServiceImpl implements PostService {
             post.setContent(requestDto.getContent());
         }
 
-//        // 5. Update slug (check uniqueness)
-//        if (requestDto.getSlug() != null &&
-//                !requestDto.getSlug().equals(post.getSlug())) {
-//
-//            if (postRepository.existsBySlug(requestDto.getSlug())) {
-//                throw new RuntimeException("Slug already exists");
-//            }
-//
-//            post.setSlug(requestDto.getSlug());
-//        }
-
-
         if (requestDto.getPostStatus() != null) {
             post.setPostStatus(requestDto.getPostStatus());
         }
 
-
         Post updatedPost = postRepository.save(post);
-
-
         return mapToResponse(updatedPost);
-
-
     }
 
     @Override

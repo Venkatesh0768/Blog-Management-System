@@ -20,10 +20,6 @@ public class UserController {
 
     private final UserService userService;
 
-    @GetMapping
-    public ResponseEntity<List<UserResponseDto>> getAllUser() {
-        return new ResponseEntity<>(userService.getAllUser(), HttpStatus.OK);
-    }
 
     @GetMapping("/{id}")
     public ResponseEntity<UserResponseDto> getUserById(@PathVariable UUID id) {

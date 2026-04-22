@@ -28,10 +28,6 @@ public class PostController {
         return new ResponseEntity<>(postService.createPost(requestDto, id), HttpStatus.CREATED);
     }
 
-    @GetMapping
-    public ResponseEntity<List<PostResponseDto>> getAllPosts() {
-        return new ResponseEntity<>(postService.getAllPost(), HttpStatus.OK);
-    }
 
     @GetMapping("/{id}")
     public ResponseEntity<List<PostResponseDto>> getAllPosts(@PathVariable UUID id) {
