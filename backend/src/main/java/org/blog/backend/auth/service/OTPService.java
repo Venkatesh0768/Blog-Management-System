@@ -1,12 +1,11 @@
 package org.blog.backend.auth.service;
 
 import lombok.RequiredArgsConstructor;
-import org.blog.backend.auth.exception.InvalidTokenException;
+import org.blog.backend.auth.exception.EmailAlreadyVerifiedException;
+import org.blog.backend.auth.exception.InvalidOTPException;
 import org.blog.backend.auth.model.OTP;
-import org.blog.backend.auth.model.RefreshToken;
 import org.blog.backend.auth.model.User;
 import org.blog.backend.auth.repository.OTPRepository;
-import org.blog.backend.auth.repository.RefreshTokenRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,66 +13,75 @@ import org.springframework.transaction.annotation.Transactional;
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.Optional;
-import java.util.UUID;
 
+/**
+ * Owns the full lifecycle of {@link OTP} entities.
+ *
+ * <p><b>Single Responsibility</b>: this service handles <em>only</em> OTPs —
+ * refresh-token management has been moved to {@link RefreshTokenService}.</p>
+ *
+ * <p>A {@link SecureRandom} instance is used for all OTP generation to ensure
+ * cryptographic quality randomness.</p>
+ */
 @Service
 @RequiredArgsConstructor
 public class OTPService {
 
     private final OTPRepository otpRepository;
-    private final RefreshTokenRepository refreshTokenRepository;
     private final EmailService emailService;
 
+    /** OTP lifetime in <em>milliseconds</em> (e.g. 300000 = 5 minutes). */
     @Value("${otp.expiration}")
-    private long otpExpiration;
+    private long otpExpirationMs;
 
+    /** Number of digits in the generated OTP (e.g. 6). */
     @Value("${otp.length}")
     private int otpLength;
 
-    @Value("${jwt.refresh-expiration}")
-    private long refreshTokenExpiration;
+    // ─── Generate & Send ─────────────────────────────────────────────────────
 
+    /**
+     * Delete any existing OTP for {@code email}, generate a fresh one, persist
+     * it, and send the email-verification message.
+     *
+     * @param email recipient address
+     */
     @Transactional
     public void generateAndSendOTP(String email) {
-        // Delete existing OTPs
         otpRepository.deleteByEmail(email);
 
-        // Generate new OTP
-        String otpCode = generateOTPCode();
-        LocalDateTime expiryTime = LocalDateTime.now().plusSeconds(otpExpiration / 1000);
-
-        OTP otp = OTP.builder()
-                .email(email)
-                .otpCode(otpCode)
-                .expiryTime(expiryTime)
-                .build();
-
+        OTP otp = buildOTP(email);
         otpRepository.save(otp);
 
-        // Send email
-        emailService.sendOTPEmail(email, otpCode);
+        emailService.sendOTPEmail(email, otp.getOtpCode());
     }
 
+    /**
+     * Delete any existing OTP for {@code email}, generate a fresh one, persist
+     * it, and send the password-reset message.
+     *
+     * @param email recipient address
+     */
     @Transactional
     public void generateAndSendPasswordResetOTP(String email) {
-        // Delete existing OTPs (keep only one active code)
         otpRepository.deleteByEmail(email);
 
-        String otpCode = generateOTPCode();
-        LocalDateTime expiryTime = LocalDateTime.now().plusSeconds(otpExpiration / 1000);
-
-        OTP otp = OTP.builder()
-                .email(email)
-                .otpCode(otpCode)
-                .expiryTime(expiryTime)
-                .build();
-
+        OTP otp = buildOTP(email);
         otpRepository.save(otp);
 
-        // Send reset-specific email
-        emailService.sendPasswordResetOTPEmail(email, otpCode);
+        emailService.sendPasswordResetOTPEmail(email, otp.getOtpCode());
     }
 
+    // ─── Validate ────────────────────────────────────────────────────────────
+
+    /**
+     * Validate that {@code otpCode} matches an unverified, non-expired OTP for
+     * {@code email}.  On success the OTP is marked verified (prevent re-use).
+     *
+     * @param email   the user's email address
+     * @param otpCode the code submitted by the user
+     * @return {@code true} if valid, {@code false} otherwise
+     */
     public boolean validateOTP(String email, String otpCode) {
         Optional<OTP> otpOptional = otpRepository
                 .findByEmailAndOtpCodeAndVerifiedFalse(email, otpCode);
@@ -90,42 +98,52 @@ public class OTPService {
 
         otp.setVerified(true);
         otpRepository.save(otp);
-
         return true;
     }
 
-    @Transactional
-    public RefreshToken createRefreshToken(User user) {
-
-        Optional<RefreshToken> existingToken = refreshTokenRepository.findByUser(user);
-
-        RefreshToken refreshToken;
-        if (existingToken.isPresent()) {
-            refreshToken = existingToken.get();
-            refreshToken.setToken(UUID.randomUUID().toString());
-            refreshToken.setExpiryDate(LocalDateTime.now().plusSeconds(refreshTokenExpiration / 1000));
-        } else {
-            refreshToken = RefreshToken.builder()
-                    .user(user)
-                    .token(UUID.randomUUID().toString())
-                    .expiryDate(LocalDateTime.now().plusSeconds(refreshTokenExpiration / 1000))
-                    .build();
+    /**
+     * Convenience wrapper that throws instead of returning {@code false}.
+     *
+     * @throws InvalidOTPException if the OTP is invalid or expired
+     */
+    public void validateOTPOrThrow(String email, String otpCode) {
+        if (!validateOTP(email, otpCode)) {
+            throw new InvalidOTPException("Invalid or expired OTP");
         }
-
-        return refreshTokenRepository.save(refreshToken);
     }
 
-    public RefreshToken verifyExpiration(RefreshToken token) {
-        if (token.getExpiryDate().isBefore(LocalDateTime.now())) {
-            refreshTokenRepository.delete(token);
-            throw new InvalidTokenException("Refresh token expired");
+    // ─── Resend Guard ────────────────────────────────────────────────────────
+
+    /**
+     * Guard used before resending an OTP — throws if the email is already
+     * verified.
+     *
+     * @param user the user requesting a resend
+     * @throws EmailAlreadyVerifiedException if already verified
+     */
+    public void assertEmailNotYetVerified(User user) {
+        if (user.isEmailVerified()) {
+            throw new EmailAlreadyVerifiedException("Email is already verified");
         }
-        return token;
+    }
+
+    // ─── Private helpers ─────────────────────────────────────────────────────
+
+    private OTP buildOTP(String email) {
+        String code = generateOTPCode();
+        LocalDateTime expiryTime = LocalDateTime.now()
+                .plusSeconds(otpExpirationMs / 1000);
+
+        return OTP.builder()
+                .email(email)
+                .otpCode(code)
+                .expiryTime(expiryTime)
+                .build();
     }
 
     private String generateOTPCode() {
         SecureRandom secureRandom = new SecureRandom();
-        StringBuilder otp = new StringBuilder();
+        StringBuilder otp = new StringBuilder(otpLength);
         for (int i = 0; i < otpLength; i++) {
             otp.append(secureRandom.nextInt(10));
         }

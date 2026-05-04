@@ -3,23 +3,21 @@ package org.blog.backend.auth.controller;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.blog.backend.auth.dto.ApiResponse;
 import org.blog.backend.auth.dto.ChangePasswordRequest;
 import org.blog.backend.auth.dto.UpdateProfileRequest;
-
 import org.blog.backend.auth.dto.UserDTO;
-import org.blog.backend.auth.exception.UserNotFoundException;
-import org.blog.backend.auth.model.User;
-import org.blog.backend.auth.repository.UserRepository;
+import org.blog.backend.auth.security.CookieService;
 import org.blog.backend.auth.service.AuthService;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.stream.Collectors;
 
 @Tag(name = "User", description = "Authenticated user self-service operations")
 @RestController
@@ -29,32 +27,13 @@ import java.util.stream.Collectors;
 @PreAuthorize("isAuthenticated()")
 public class UserController {
 
-    private final UserRepository userRepository;
     private final AuthService authService;
+    private final CookieService cookieService;
 
     @Operation(summary = "Get current user's full profile")
     @GetMapping("/me")
     public ResponseEntity<ApiResponse> getMe(Authentication authentication) {
-        String email = authentication.getName();
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new UserNotFoundException("User not found"));
-
-        UserDTO dto = UserDTO.builder()
-                .id(user.getId())
-                .email(user.getEmail())
-                .firstName(user.getFirstName())
-                .lastName(user.getLastName())
-                .emailVerified(user.isEmailVerified())
-                .enabled(user.isEnabled())
-                .provider(user.getProvider())
-                .profileImageUrl(user.getProfileImageUrl())
-                .lastLoginAt(user.getLastLoginAt())
-                .createdAt(user.getCreatedAt())
-                .roles(user.getRoles().stream()
-                        .map(role -> role.getName().name())
-                        .collect(Collectors.toSet()))
-                .build();
-
+        UserDTO dto = authService.getUserByEmail(authentication.getName());
         return ResponseEntity.ok(new ApiResponse(true, "Profile retrieved", dto));
     }
 
@@ -66,17 +45,34 @@ public class UserController {
         return ResponseEntity.ok(authService.updateProfile(authentication.getName(), request));
     }
 
-    @Operation(summary = "Change password (requires current password)")
+    @Operation(summary = "Change password — revokes all other active sessions")
     @PostMapping("/me/change-password")
     public ResponseEntity<ApiResponse> changePassword(
             Authentication authentication,
-            @Valid @RequestBody ChangePasswordRequest request) {
-        return ResponseEntity.ok(authService.changePassword(authentication.getName(), request));
+            @Valid @RequestBody ChangePasswordRequest request,
+            HttpServletResponse httpResponse) {
+
+        ApiResponse result = authService.changePassword(authentication.getName(), request);
+
+        // Password changed → all sessions revoked; clear the refresh token cookie
+        ResponseCookie clearCookie = cookieService.clearRefreshTokenCookie();
+        httpResponse.addHeader(HttpHeaders.SET_COOKIE, clearCookie.toString());
+
+        return ResponseEntity.ok(result);
     }
 
-    @Operation(summary = "Revoke all active sessions (logout all devices)")
+    @Operation(summary = "Logout from all devices — revokes all refresh tokens")
     @DeleteMapping("/me/sessions")
-    public ResponseEntity<ApiResponse> logoutAll(Authentication authentication) {
-        return ResponseEntity.ok(authService.logoutAll(authentication.getName()));
+    public ResponseEntity<ApiResponse> logoutAll(
+            Authentication authentication,
+            HttpServletResponse httpResponse) {
+
+        ApiResponse result = authService.logoutAll(authentication.getName());
+
+        // Clear cookie for current browser session too
+        ResponseCookie clearCookie = cookieService.clearRefreshTokenCookie();
+        httpResponse.addHeader(HttpHeaders.SET_COOKIE, clearCookie.toString());
+
+        return ResponseEntity.ok(result);
     }
 }

@@ -80,6 +80,25 @@ cors:
 app:
   frontend-url: ${APP_FRONTEND_URL}
 
+  # ── HttpOnly cookie configuration (refresh token transport) ─────────────────
+  cookie:
+    secure: true                       # HTTPS only — required in production
+    same-site: Strict                  # Strict CSRF protection
+    domain: ${COOKIE_DOMAIN:}          # e.g. yourdomain.com (empty = auto)
+    max-age-seconds: 604800            # 7 days
+    path: /
+
+  # ── Scheduler configuration ──────────────────────────────────────────────────
+  scheduler:
+    token-cleanup-cron: ${TOKEN_CLEANUP_CRON:0 0 3 * * *}  # default: 03:00 UTC daily
+
+# ─── Default Admin Seed ───────────────────────────────────────────────────────
+admin:
+  email: ${ADMIN_EMAIL:}
+  password: ${ADMIN_PASSWORD:}
+  first-name: ${ADMIN_FIRST_NAME:Super}
+  last-name: ${ADMIN_LAST_NAME:Admin}
+
 springdoc:
   api-docs:
     path: /v3/api-docs

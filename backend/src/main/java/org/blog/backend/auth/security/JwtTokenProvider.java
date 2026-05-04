@@ -2,6 +2,8 @@ package org.blog.backend.auth.security;
 
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
+import io.jsonwebtoken.security.SignatureException;
+import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.blog.backend.auth.model.User;
 import org.springframework.beans.factory.annotation.Value;
@@ -11,26 +13,94 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
+import java.util.Base64;
 import java.util.Date;
 import java.util.List;
 
+/**
+ * Encapsulates all JWT token operations: generation, parsing, and validation.
+ *
+ * <h3>Key derivation (production-grade)</h3>
+ * <p>The secret is expected to be a <b>Base64-encoded</b> byte array of at
+ * least 256 bits (32 bytes).  {@code getBytes()} on a short UTF-8 string would
+ * produce a weak key and is therefore rejected at startup by
+ * .</p>
+ *
+ * <pre>
+ * # Generate a suitable secret:
+ * openssl rand -base64 64
+ * </pre>
+ *
+ * <h3>Claims embedded in the token</h3>
+ * <ul>
+ *   <li>{@code sub} — user's email address</li>
+ *   <li>{@code roles} — list of role strings (e.g. {@code ["ROLE_USER"]})</li>
+ *   <li>{@code iat} / {@code exp} — standard issued-at / expiry</li>
+ * </ul>
+ *
+ * <p>Roles are embedded so that the {@link JwtAuthenticationFilter} can
+ * reconstruct the Spring Security {@code Authentication} object without an
+ * extra database round-trip per request.</p>
+ */
 @Slf4j
 @Component
 public class JwtTokenProvider {
 
+    private static final int MINIMUM_KEY_BYTES = 32; // 256 bits
+
     @Value("${jwt.secret}")
-    private String jwtSecret;
+    private String jwtSecretBase64;
 
     @Value("${jwt.expiration}")
-    private long jwtExpiration;
+    private long jwtExpirationMs;
 
-    private SecretKey getSigningKey() {
-        return Keys.hmacShaKeyFor(jwtSecret.getBytes());
+    private SecretKey signingKey;
+
+    /**
+     * Initialize the signing key at startup using one of two strategies:
+     *
+     * <ol>
+     *   <li><b>Base64 path (preferred)</b> — if {@code jwt.secret} is a valid
+     *       Base64 string, decode it and use the resulting bytes.  This is the
+     *       correct production approach; generate with {@code openssl rand -base64 64}.</li>
+     *   <li><b>UTF-8 fallback</b> — if the value is <em>not</em> valid Base64
+     *       (e.g. a legacy plain-text secret), treat the raw bytes of the string
+     *       as the key.  A warning is logged so operators know to migrate.</li>
+     * </ol>
+     *
+     * <p>In both cases the derived key must be at least 256 bits (32 bytes) — the
+     * minimum for HMAC-SHA-256 as mandated by the JWT specification.  The
+     * application fails fast with a descriptive error if this is not met.</p>
+     */
+    @PostConstruct
+    void initSigningKey() {
+        byte[] keyBytes;
+
+        try {
+            keyBytes = Base64.getDecoder().decode(jwtSecretBase64);
+            log.info("JWT signing key loaded from Base64 ({} bytes)", keyBytes.length);
+        } catch (IllegalArgumentException e) {
+            // Not valid Base64 — treat as a raw UTF-8 secret (legacy / dev mode)
+            keyBytes = jwtSecretBase64.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+            log.warn("jwt.secret is not Base64 — falling back to raw UTF-8 bytes ({} bytes). " +
+                     "For production, generate a proper key with: openssl rand -base64 64", keyBytes.length);
+        }
+
+        if (keyBytes.length < MINIMUM_KEY_BYTES) {
+            throw new IllegalStateException(String.format(
+                    "JWT secret is too short (%d bytes). Minimum is %d bytes (256 bits). " +
+                    "Generate a secure key with: openssl rand -base64 64",
+                    keyBytes.length, MINIMUM_KEY_BYTES));
+        }
+
+        this.signingKey = Keys.hmacShaKeyFor(keyBytes);
     }
 
     // ─── Token generation ────────────────────────────────────────────────────
 
-    /** Generate JWT from a Spring Security Authentication (email+password login). */
+    /**
+     * Generate a JWT from a Spring Security {@link Authentication} (email+password login).
+     */
     public String generateToken(Authentication authentication) {
         UserDetails userDetails = (UserDetails) authentication.getPrincipal();
         List<String> roles = authentication.getAuthorities().stream()
@@ -39,30 +109,21 @@ public class JwtTokenProvider {
         return buildToken(userDetails.getUsername(), roles);
     }
 
-    /** Generate JWT from a raw email string (used during token refresh). */
+    /**
+     * Generate a JWT from a raw email string + role list (used during token refresh).
+     */
     public String generateTokenFromUsername(String email, List<String> roles) {
         return buildToken(email, roles);
     }
 
-    /** Generate JWT from a User entity (used by OAuth2 success handler). */
+    /**
+     * Generate a JWT from a {@link User} entity (used by OAuth2 success handler).
+     */
     public String generateTokenForUser(User user) {
         List<String> roles = user.getRoles().stream()
                 .map(role -> role.getName().name())
                 .toList();
         return buildToken(user.getEmail(), roles);
-    }
-
-    private String buildToken(String subject, List<String> roles) {
-        Date now = new Date();
-        Date expiry = new Date(now.getTime() + jwtExpiration);
-
-        return Jwts.builder()
-                .subject(subject)
-                .claim("roles", roles)          // Embed roles → no DB hit per request
-                .issuedAt(now)
-                .expiration(expiry)
-                .signWith(getSigningKey())
-                .compact();
     }
 
     // ─── Token parsing ───────────────────────────────────────────────────────
@@ -85,18 +146,35 @@ public class JwtTokenProvider {
             getClaims(token);
             return true;
         } catch (ExpiredJwtException e) {
-            log.warn("JWT token is expired: {}", e.getMessage());
+            log.warn("JWT expired: {}", e.getMessage());
+        } catch (SignatureException e) {
+            log.warn("JWT signature invalid — possible tampering");
         } catch (MalformedJwtException e) {
-            log.warn("JWT token is malformed: {}", e.getMessage());
+            log.warn("JWT malformed: {}", e.getMessage());
         } catch (JwtException | IllegalArgumentException e) {
             log.warn("JWT validation error: {}", e.getMessage());
         }
         return false;
     }
 
+    // ─── Private ─────────────────────────────────────────────────────────────
+
+    private String buildToken(String subject, List<String> roles) {
+        Date now    = new Date();
+        Date expiry = new Date(now.getTime() + jwtExpirationMs);
+
+        return Jwts.builder()
+                .subject(subject)
+                .claim("roles", roles)
+                .issuedAt(now)
+                .expiration(expiry)
+                .signWith(signingKey)
+                .compact();
+    }
+
     private Claims getClaims(String token) {
         return Jwts.parser()
-                .verifyWith(getSigningKey())
+                .verifyWith(signingKey)
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();

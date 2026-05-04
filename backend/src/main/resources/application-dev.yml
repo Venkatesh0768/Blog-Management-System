@@ -105,6 +105,30 @@ app:
   base-url: ${APP_BASE_URL:http://localhost:5000}
   short-url-ttl: ${SHORT_URL_TTL:86400}
 
+  # ── HttpOnly cookie configuration (refresh token transport) ─────────────────
+  cookie:
+    # false in dev — HTTPS not required on localhost; MUST be true in production
+    secure: false
+    # Lax allows the cookie through same-site top-level navigations (needed for
+    # OAuth2 redirects in dev).  Use Strict in production.
+    same-site: Lax
+    domain: ""                 # empty = use request domain automatically
+    max-age-seconds: 604800    # 7 days
+    path: /
+
+  # ── Scheduler configuration ──────────────────────────────────────────────────
+  scheduler:
+    # Nightly expired-token cleanup — runs at 03:00 every day (UTC)
+    token-cleanup-cron: "0 0 3 * * *"
+
+# ─── Default Admin Seed ───────────────────────────────────────────────────────
+# Created once on first boot when no ROLE_ADMIN user exists.
+admin:
+  email: ${ADMIN_EMAIL:}
+  password: ${ADMIN_PASSWORD:}
+  first-name: ${ADMIN_FIRST_NAME:Super}
+  last-name: ${ADMIN_LAST_NAME:Admin}
+
 # ─── API Documentation ───────────────────────────────────────────────────────
 springdoc:
   api-docs:

@@ -30,16 +30,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import java.util.Arrays;
 import java.util.List;
 
-/**
- * Central Spring Security configuration.
- *
- * Features:
- *  - JWT stateless authentication for all API routes
- *  - OAuth2 social login (Google, GitHub) with JWT token generation on success
- *  - Role-based access: ROLE_USER, ROLE_ADMIN, ROLE_VENDOR
- *  - CORS configured from application properties (not hardcoded)
- *  - Swagger UI, actuator/health, and auth endpoints are public
- */
+
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity   // Enables @PreAuthorize / @PostAuthorize on methods

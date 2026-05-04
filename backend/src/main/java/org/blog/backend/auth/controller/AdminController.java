@@ -29,7 +29,6 @@ public class AdminController {
     private final AdminUserService adminUserService;
 
 
-
     @Operation(summary = "Get all users (paginated)")
     @GetMapping("/users")
     public ResponseEntity<Page<UserDTO>> getAllUsers(
@@ -70,7 +69,6 @@ public class AdminController {
     public ResponseEntity<ApiResponse> deleteUser(@PathVariable UUID id) {
         return ResponseEntity.ok(adminUserService.deleteUser(id));
     }
-
 
 
     @Operation(summary = "Get audit logs")

@@ -8,8 +8,6 @@ import org.blog.backend.auth.model.RefreshToken;
 import org.blog.backend.auth.model.Role;
 import org.blog.backend.auth.model.RoleType;
 import org.blog.backend.auth.model.User;
-import org.blog.backend.auth.repository.OTPRepository;
-import org.blog.backend.auth.repository.RefreshTokenRepository;
 import org.blog.backend.auth.repository.RoleRepository;
 import org.blog.backend.auth.repository.UserRepository;
 import org.blog.backend.auth.security.JwtTokenProvider;
@@ -27,34 +25,61 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * Core authentication service.
+ *
+ * <h3>Responsibilities</h3>
+ * <ul>
+ *   <li>Signup with OTP email verification</li>
+ *   <li>Login with brute-force lockout</li>
+ *   <li>Password reset / change</li>
+ *   <li>Profile management</li>
+ * </ul>
+ *
+ * <h3>What this service does NOT do</h3>
+ * <ul>
+ *   <li><b>Refresh token CRUD</b> → delegated to {@link RefreshTokenService}</li>
+ *   <li><b>OTP generation/validation</b> → delegated to {@link OTPService}</li>
+ *   <li><b>Cookie building</b> → delegated to
+ *       {@code org.blog.backend.auth.security.CookieService} (called from controller)</li>
+ * </ul>
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class AuthService {
 
-    private static final int MAX_FAILED_ATTEMPTS = 5;
+    private static final int MAX_FAILED_ATTEMPTS  = 5;
     private static final int LOCK_DURATION_MINUTES = 15;
 
-    private final UserRepository userRepository;
-    private final RoleRepository roleRepository;
-    private final OTPRepository otpRepository;
-    private final RefreshTokenRepository refreshTokenRepository;
-    private final PasswordEncoder passwordEncoder;
+    private final UserRepository       userRepository;
+    private final RoleRepository       roleRepository;
+    private final PasswordEncoder      passwordEncoder;
     private final AuthenticationManager authenticationManager;
-    private final JwtTokenProvider tokenProvider;
-    private final EmailService emailService;
-    private final OTPService otpService;
+    private final JwtTokenProvider     tokenProvider;
+    private final EmailService         emailService;
+    private final OTPService           otpService;
+    private final RefreshTokenService  refreshTokenService;
 
     @Value("${jwt.expiration}")
-    private long jwtExpiration;
+    private long jwtExpirationMs;
 
     // ─── Signup ──────────────────────────────────────────────────────────────
 
+    /**
+     * Register a new local user, send OTP for email verification.
+     *
+     * @param request validated signup payload
+     * @return success envelope (no tokens — user must verify email first)
+     */
     @Transactional
     public ApiResponse signup(SignupRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new EmailAlreadyExistsException("Email already registered");
         }
+
+        Role userRole = roleRepository.findByName(RoleType.ROLE_USER)
+                .orElseThrow(() -> new RuntimeException("Default role ROLE_USER not found — did DataInitializer run?"));
 
         User user = User.builder()
                 .email(request.getEmail())
@@ -66,61 +91,73 @@ public class AuthService {
                 .provider("local")
                 .build();
 
-        Role userRole = roleRepository.findByName(RoleType.ROLE_USER)
-                .orElseThrow(() -> new RuntimeException("Default role ROLE_USER not found"));
         user.getRoles().add(userRole);
-
         userRepository.save(user);
+
         otpService.generateAndSendOTP(user.getEmail());
 
+        log.info("New user registered: {}", user.getEmail());
         return new ApiResponse(true,
-                "Registration successful. Please verify your email with the OTP sent to " +
-                        user.getEmail(), null);
+                "Registration successful. Please check your email for the verification OTP.", null);
     }
 
-    // ─── Login with brute-force protection ───────────────────────────────────
+    // ─── Login ───────────────────────────────────────────────────────────────
 
+    /**
+     * Authenticate with email/password; returns tokens on success.
+     *
+     * <p>The returned {@link AuthResponse} contains the access token and user
+     * data.  The <b>refresh token</b> is returned separately so the controller
+     * can place it in an HttpOnly cookie — it is deliberately absent from the
+     * response body ({@link AuthResponse#getRefreshToken()} is not serialized).</p>
+     *
+     * @param request   validated login payload
+     * @param deviceInfo truncated User-Agent from the request
+     * @return access token + user info + raw refresh token for cookie
+     */
     @Transactional
-    public AuthResponse login(LoginRequest request) {
+    public LoginResult login(LoginRequest request, String deviceInfo) {
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new UserNotFoundException("Invalid email or password"));
 
-        // Check account lock BEFORE attempting authentication
+        // Brute-force check BEFORE attempting Spring Security authentication
         if (user.isAccountLocked()) {
             long minutesLeft = java.time.Duration.between(
                     LocalDateTime.now(), user.getAccountLockedUntil()).toMinutes() + 1;
             throw new AccountLockedException(
-                    "Account is temporarily locked due to too many failed attempts. " +
+                    "Account temporarily locked due to too many failed attempts. " +
                     "Try again in " + minutesLeft + " minute(s).");
         }
 
         try {
             Authentication authentication = authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
-            );
+                    new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword()));
 
-            // Successful login — reset counter
+            // Reset counter on successful auth
             user.setFailedLoginAttempts(0);
             user.setAccountLockedUntil(null);
             user.setLastLoginAt(LocalDateTime.now());
             userRepository.save(user);
 
+            // Email must be verified for local accounts
             if (!user.isEmailVerified()) {
                 throw new EmailNotVerifiedException("Please verify your email before logging in");
             }
 
-            String accessToken = tokenProvider.generateToken(authentication);
-            RefreshToken refreshToken = otpService.createRefreshToken(user);
+            String accessToken   = tokenProvider.generateToken(authentication);
+            RefreshToken refresh = refreshTokenService.createRefreshToken(user, deviceInfo);
 
-            return AuthResponse.builder()
+            log.info("User logged in: {} from device='{}'", user.getEmail(), deviceInfo);
+
+            AuthResponse authResponse = AuthResponse.builder()
                     .accessToken(accessToken)
-                    .refreshToken(refreshToken.getToken())
-                    .expiresIn(jwtExpiration / 1000)
+                    .expiresIn(jwtExpirationMs / 1000)
                     .user(convertToUserDTO(user))
                     .build();
 
+            return new LoginResult(authResponse, refresh.getToken());
+
         } catch (BadCredentialsException | DisabledException ex) {
-            // Increment failed attempts
             int attempts = user.getFailedLoginAttempts() + 1;
             user.setFailedLoginAttempts(attempts);
 
@@ -129,7 +166,8 @@ public class AuthService {
                 userRepository.save(user);
                 log.warn("Account locked for user={} after {} failed attempts", user.getEmail(), attempts);
                 throw new AccountLockedException(
-                        "Account locked for " + LOCK_DURATION_MINUTES + " minutes due to too many failed login attempts.");
+                        "Account locked for " + LOCK_DURATION_MINUTES +
+                        " minutes due to too many failed login attempts.");
             }
 
             userRepository.save(user);
@@ -139,13 +177,17 @@ public class AuthService {
         }
     }
 
+    /**
+     * Immutable carrier for a login result: the serializable response body and
+     * the raw refresh token that the controller places in an HttpOnly cookie.
+     */
+    public record LoginResult(AuthResponse authResponse, String rawRefreshToken) {}
+
     // ─── OTP Verification ────────────────────────────────────────────────────
 
     @Transactional
     public ApiResponse verifyOTP(OTPVerificationRequest request) {
-        if (!otpService.validateOTP(request.getEmail(), request.getOtp())) {
-            throw new InvalidOTPException("Invalid or expired OTP");
-        }
+        otpService.validateOTPOrThrow(request.getEmail(), request.getOtp());
 
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new UserNotFoundException("User not found"));
@@ -154,84 +196,113 @@ public class AuthService {
         user.setEnabled(true);
         userRepository.save(user);
 
-        return new ApiResponse(true, "Email verified successfully. You can now log in", null);
+        log.info("Email verified for user={}", user.getEmail());
+        return new ApiResponse(true, "Email verified successfully. You can now log in.", null);
     }
 
+    @Transactional
     public ApiResponse resendOTP(String email) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new UserNotFoundException("User not found"));
 
-        if (user.isEmailVerified()) {
-            throw new EmailAlreadyVerifiedException("Email is already verified");
-        }
-
+        otpService.assertEmailNotYetVerified(user);
         otpService.generateAndSendOTP(email);
+
         return new ApiResponse(true, "OTP sent to " + email, null);
+    }
+
+    // ─── Token Refresh ────────────────────────────────────────────────────────
+
+    /**
+     * Exchange a valid refresh token for a new access token.
+     *
+     * <p>Implements <b>refresh token rotation</b> — the old token is deleted
+     * and a brand-new one is issued. This limits the blast radius if a token
+     * is ever stolen: it becomes invalid after one use.</p>
+     *
+     * @param rawToken   the token value from the cookie
+     * @param deviceInfo truncated User-Agent
+     * @return new access token + new raw refresh token (for cookie rotation)
+     */
+    @Transactional
+    public LoginResult refreshAccessToken(String rawToken, String deviceInfo) {
+        RefreshToken refreshToken = refreshTokenService.verifyRefreshToken(rawToken);
+        User user = refreshToken.getUser();
+
+        // Rotate the refresh token (old invalidated, new issued)
+        RefreshToken newRefreshToken = refreshTokenService.rotateRefreshToken(refreshToken, deviceInfo);
+
+        List<String> roles = user.getRoles().stream()
+                .map(r -> r.getName().name())
+                .toList();
+        String newAccessToken = tokenProvider.generateTokenFromUsername(user.getEmail(), roles);
+
+        AuthResponse authResponse = AuthResponse.builder()
+                .accessToken(newAccessToken)
+                .expiresIn(jwtExpirationMs / 1000)
+                .user(convertToUserDTO(user))
+                .build();
+
+        return new LoginResult(authResponse, newRefreshToken.getToken());
+    }
+
+    // ─── Logout ───────────────────────────────────────────────────────────────
+
+    /**
+     * Revoke a single session (single-device logout).
+     *
+     * @param rawToken the refresh token value from the cookie
+     */
+    @Transactional
+    public ApiResponse logout(String rawToken) {
+        refreshTokenService.deleteByTokenValue(rawToken);
+        return new ApiResponse(true, "Logged out successfully", null);
+    }
+
+    /**
+     * Revoke all sessions for a user (logout from all devices).
+     *
+     * @param email the authenticated user's email
+     */
+    @Transactional
+    public ApiResponse logoutAll(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
+        refreshTokenService.deleteAllByUser(user);
+        log.info("All sessions revoked for user={}", email);
+        return new ApiResponse(true, "All sessions revoked successfully", null);
     }
 
     // ─── Password Reset ───────────────────────────────────────────────────────
 
+    /**
+     * Initiate password reset — always returns success to prevent user enumeration.
+     */
     @Transactional
     public void requestPasswordReset(String email) {
+        // Find user silently — do not reveal whether the email exists
         userRepository.findByEmail(email)
                 .ifPresent(user -> otpService.generateAndSendPasswordResetOTP(email));
     }
 
     @Transactional
     public ApiResponse resetPassword(ResetPasswordRequest request) {
-        if (!otpService.validateOTP(request.getEmail(), request.getOtp())) {
-            throw new InvalidOTPException("Invalid or expired OTP");
-        }
+        otpService.validateOTPOrThrow(request.getEmail(), request.getOtp());
 
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new UserNotFoundException("User not found"));
 
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
-        // Unlock account on password reset
+        // Unlock account on password reset — good UX after lockout
         user.setFailedLoginAttempts(0);
         user.setAccountLockedUntil(null);
         userRepository.save(user);
 
+        // Invalidate all existing sessions — credentials changed
+        refreshTokenService.deleteAllByUser(user);
+        log.info("Password reset for user={} — all sessions revoked", user.getEmail());
+
         return new ApiResponse(true, "Password reset successful. Please log in with your new password.", null);
-    }
-
-    // ─── Token Refresh ────────────────────────────────────────────────────────
-
-    @Transactional
-    public AuthResponse refreshToken(String token) {
-        return refreshTokenRepository.findByToken(token)
-                .map(otpService::verifyExpiration)
-                .map(RefreshToken::getUser)
-                .map(user -> {
-                    List<String> roles = user.getRoles().stream()
-                            .map(r -> r.getName().name())
-                            .toList();
-                    String newAccessToken = tokenProvider.generateTokenFromUsername(user.getEmail(), roles);
-                    return AuthResponse.builder()
-                            .accessToken(newAccessToken)
-                            .refreshToken(token)
-                            .expiresIn(jwtExpiration / 1000)
-                            .user(convertToUserDTO(user))
-                            .build();
-                })
-                .orElseThrow(() -> new InvalidTokenException("Invalid refresh token"));
-    }
-
-    // ─── Logout ───────────────────────────────────────────────────────────────
-
-    @Transactional
-    public ApiResponse logout(String refreshToken) {
-        refreshTokenRepository.findByToken(refreshToken)
-                .ifPresent(refreshTokenRepository::delete);
-        return new ApiResponse(true, "Logged out successfully", null);
-    }
-
-    @Transactional
-    public ApiResponse logoutAll(String email) {
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new UserNotFoundException("User not found"));
-        refreshTokenRepository.deleteByUser(user);
-        return new ApiResponse(true, "All sessions revoked successfully", null);
     }
 
     // ─── Change Password ─────────────────────────────────────────────────────
@@ -247,10 +318,15 @@ public class AuthService {
 
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
         userRepository.save(user);
-        return new ApiResponse(true, "Password changed successfully", null);
+
+        // Security best practice: revoke all other sessions on password change
+        refreshTokenService.deleteAllByUser(user);
+        log.info("Password changed for user={} — all sessions revoked", user.getEmail());
+
+        return new ApiResponse(true, "Password changed successfully. Please log in again.", null);
     }
 
-    // ─── Update Profile ───────────────────────────────────────────────────────
+    // ─── Profile ─────────────────────────────────────────────────────────────
 
     @Transactional
     public ApiResponse updateProfile(String email, UpdateProfileRequest request) {
@@ -267,10 +343,21 @@ public class AuthService {
             user.setProfileImageUrl(request.getProfileImageUrl());
         }
         userRepository.save(user);
+
         return new ApiResponse(true, "Profile updated successfully", convertToUserDTO(user));
     }
 
-    // ─── Helper ───────────────────────────────────────────────────────────────
+    /**
+     * Fetch a user and return it as a {@link UserDTO}.
+     * Used by controllers that need the current user's profile.
+     */
+    public UserDTO getUserByEmail(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
+        return convertToUserDTO(user);
+    }
+
+    // ─── Shared mapper ───────────────────────────────────────────────────────
 
     public UserDTO convertToUserDTO(User user) {
         return UserDTO.builder()

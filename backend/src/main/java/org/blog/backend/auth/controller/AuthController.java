@@ -2,13 +2,17 @@ package org.blog.backend.auth.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-
 import org.blog.backend.auth.dto.*;
 import org.blog.backend.auth.exception.InvalidTokenException;
+import org.blog.backend.auth.security.CookieService;
 import org.blog.backend.auth.service.AuthService;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -21,17 +25,13 @@ import java.util.Map;
 public class AuthController {
 
     private final AuthService authService;
+    private final CookieService cookieService;
+
 
     @Operation(summary = "Register a new user account")
     @PostMapping("/signup")
     public ResponseEntity<ApiResponse> signup(@Valid @RequestBody SignupRequest request) {
-        return new ResponseEntity<>(authService.signup(request), HttpStatus.CREATED);
-    }
-
-    @Operation(summary = "Login with email and password")
-    @PostMapping("/login")
-    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
-        return ResponseEntity.ok(authService.login(request));
+        return ResponseEntity.status(HttpStatus.CREATED).body(authService.signup(request));
     }
 
     @Operation(summary = "Verify email address using OTP sent during signup")
@@ -44,6 +44,59 @@ public class AuthController {
     @PostMapping("/resend-otp")
     public ResponseEntity<ApiResponse> resendOTP(@RequestParam String email) {
         return ResponseEntity.ok(authService.resendOTP(email));
+    }
+
+    @Operation(summary = "Login with email and password — sets HttpOnly refresh token cookie")
+    @PostMapping("/login")
+    public ResponseEntity<AuthResponse> login(
+            @Valid @RequestBody LoginRequest request,
+            HttpServletRequest httpRequest) {
+
+        String deviceInfo = resolveDeviceInfo(httpRequest);
+        AuthService.LoginResult result = authService.login(request, deviceInfo);
+
+        ResponseCookie cookie = cookieService.createRefreshTokenCookie(result.rawRefreshToken());
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                .body(result.authResponse());
+    }
+
+    @Operation(summary = "Rotate refresh token cookie and issue new access token")
+    @PostMapping("/refresh-token")
+    public ResponseEntity<AuthResponse> refreshToken(
+            HttpServletRequest httpRequest,
+            HttpServletResponse httpResponse) {
+
+        String rawToken = cookieService.extractRefreshTokenFromCookie(httpRequest);
+        if (rawToken == null || rawToken.isBlank()) {
+            throw new InvalidTokenException("Refresh token cookie is missing. Please log in again.");
+        }
+
+        String deviceInfo = resolveDeviceInfo(httpRequest);
+        AuthService.LoginResult result = authService.refreshAccessToken(rawToken, deviceInfo);
+
+        ResponseCookie newCookie = cookieService.createRefreshTokenCookie(result.rawRefreshToken());
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, newCookie.toString())
+                .body(result.authResponse());
+    }
+
+
+    @Operation(summary = "Logout — revokes the refresh token and clears the cookie")
+    @PostMapping("/logout")
+    public ResponseEntity<ApiResponse> logout(HttpServletRequest httpRequest) {
+        String rawToken = cookieService.extractRefreshTokenFromCookie(httpRequest);
+
+        if (rawToken != null && !rawToken.isBlank()) {
+            authService.logout(rawToken);
+        }
+
+        ResponseCookie clearCookie = cookieService.clearRefreshTokenCookie();
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, clearCookie.toString())
+                .body(new ApiResponse(true, "Logged out successfully", null));
     }
 
     @Operation(summary = "Request a password reset OTP")
@@ -59,37 +112,31 @@ public class AuthController {
                     .body(new ApiResponse(false, "Email is required", null));
         }
 
+        // Always return 200 — do not reveal whether the account exists
         authService.requestPasswordReset(email.trim());
         return ResponseEntity.ok(new ApiResponse(true,
-                "If an account with that email exists, an OTP has been sent.", null));
+                "If an account with that email exists, a reset OTP has been sent.", null));
     }
 
-    @Operation(summary = "Reset password using the OTP received by email")
+    @Operation(summary = "Reset password using OTP received by email")
     @PostMapping("/reset-password")
-    public ResponseEntity<ApiResponse> resetPassword(@RequestBody ResetPasswordRequest request) {
-        return ResponseEntity.ok(authService.resetPassword(request));
+    public ResponseEntity<ApiResponse> resetPassword(
+            @Valid @RequestBody ResetPasswordRequest request,
+            HttpServletResponse httpResponse) {
+
+        ApiResponse result = authService.resetPassword(request);
+
+        // Clear refresh token cookie — all sessions were revoked on password reset
+        ResponseCookie clearCookie = cookieService.clearRefreshTokenCookie();
+        httpResponse.addHeader(HttpHeaders.SET_COOKIE, clearCookie.toString());
+
+        return ResponseEntity.ok(result);
     }
 
-    @Operation(summary = "Refresh access token using a valid refresh token")
-    @PostMapping("/refresh-token")
-    public ResponseEntity<AuthResponse> refreshToken(
-            @RequestBody(required = false) Map<String, String> body,
-            @RequestHeader(value = "Authorization", required = false) String authHeader) {
 
-        String token = (body != null) ? body.get("refreshToken") : null;
-        if ((token == null || token.isBlank()) && authHeader != null) {
-            token = authHeader.startsWith("Bearer ") ? authHeader.substring(7).trim() : authHeader;
-        }
-        if (token == null || token.isBlank()) {
-            throw new InvalidTokenException("Refresh token is required");
-        }
-
-        return ResponseEntity.ok(authService.refreshToken(token));
-    }
-
-    @Operation(summary = "Logout — invalidates the provided refresh token")
-    @PostMapping("/logout")
-    public ResponseEntity<ApiResponse> logout(@Valid @RequestBody LogoutRequest request) {
-        return ResponseEntity.ok(authService.logout(request.getRefreshToken()));
+    private String resolveDeviceInfo(HttpServletRequest request) {
+        String ua = request.getHeader("User-Agent");
+        if (ua == null) return "unknown";
+        return ua.length() > 255 ? ua.substring(0, 255) : ua;
     }
 }
