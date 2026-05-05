@@ -2,7 +2,6 @@
 import React, { useState } from "react";
 import { adminApi } from "@/lib/api/admin.api";
 import { RoleBadge } from "./RoleBadge";
-import { Button } from "@/components/ui/Button";
 import { Alert } from "@/components/ui/Alert";
 import { User, RoleType } from "@/types/auth.types";
 import { isAxiosError } from "axios";
@@ -26,7 +25,7 @@ export function UserTable({ users, onRefresh }: UserTableProps) {
     try {
       await adminApi.setUserStatus(user.id, !user.enabled);
       onRefresh();
-    } catch (err) {
+    } catch {
       setError("Failed to update user status.");
     } finally {
       setActionLoading(null);
@@ -45,17 +44,14 @@ export function UserTable({ users, onRefresh }: UserTableProps) {
   };
 
   const saveRoles = async (userId: string) => {
-    if (editRoles.length === 0) {
-      setError("User must have at least one role.");
-      return;
-    }
+    if (editRoles.length === 0) { setError("User must have at least one role."); return; }
     setActionLoading(userId);
     setError(null);
     try {
       await adminApi.assignRoles(userId, { roles: editRoles });
       setEditingId(null);
       onRefresh();
-    } catch (err) {
+    } catch {
       setError("Failed to update roles.");
     } finally {
       setActionLoading(null);
@@ -63,13 +59,13 @@ export function UserTable({ users, onRefresh }: UserTableProps) {
   };
 
   const handleDelete = async (user: User) => {
-    if (!confirm(`Are you sure you want to delete ${user.email}?`)) return;
+    if (!confirm(`Delete ${user.email}? This cannot be undone.`)) return;
     setActionLoading(user.id);
     setError(null);
     try {
       await adminApi.deleteUser(user.id);
       onRefresh();
-    } catch (err) {
+    } catch {
       setError("Failed to delete user.");
     } finally {
       setActionLoading(null);
@@ -80,56 +76,50 @@ export function UserTable({ users, onRefresh }: UserTableProps) {
     <div className="flex flex-col gap-4">
       {error && <Alert variant="error" message={error} />}
 
-      <div className="overflow-x-auto rounded-xl border border-white/10 bg-white/5 backdrop-blur-md">
-        <table className="w-full text-left text-sm text-slate-300">
-          <thead className="bg-white/5 text-xs uppercase text-slate-400">
-            <tr>
-              <th className="px-6 py-4 font-medium">User</th>
-              <th className="px-6 py-4 font-medium">Roles</th>
-              <th className="px-6 py-4 font-medium">Status</th>
-              <th className="px-6 py-4 font-medium text-right">Actions</th>
+      <div className="overflow-x-auto">
+        <table className="w-full text-left text-sm font-sans">
+          <thead>
+            <tr className="border-b border-[#e9e8e7]">
+              <th className="pb-3 pr-6 text-xs font-semibold text-[#747878] uppercase tracking-wide">User</th>
+              <th className="pb-3 pr-6 text-xs font-semibold text-[#747878] uppercase tracking-wide">Roles</th>
+              <th className="pb-3 pr-6 text-xs font-semibold text-[#747878] uppercase tracking-wide">Status</th>
+              <th className="pb-3 text-xs font-semibold text-[#747878] uppercase tracking-wide text-right">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-white/10">
+          <tbody className="divide-y divide-[#e9e8e7]">
             {users.map((u) => {
               const isEditing = editingId === u.id;
               const isLoading = actionLoading === u.id;
 
               return (
-                <tr key={u.id} className="hover:bg-white/[0.02] transition-colors">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div>
-                        <div className="font-medium text-slate-200">
-                          {displayName(u)}
-                        </div>
-                        <div className="text-xs text-slate-500">{u.email}</div>
-                      </div>
+                <tr key={u.id} className="hover:bg-[#f5f3f3] transition-colors">
+                  <td className="py-4 pr-6">
+                    <div>
+                      <div className="font-medium text-[#1b1c1c]">{displayName(u)}</div>
+                      <div className="text-xs text-[#747878] mt-0.5">{u.email}</div>
                       {!u.emailVerified && (
-                        <span className="rounded bg-amber-500/20 px-1.5 py-0.5 text-[10px] font-medium text-amber-400">
+                        <span className="inline-block mt-1 px-1.5 py-0.5 text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200 rounded-sm uppercase tracking-wide">
                           Unverified
                         </span>
                       )}
                     </div>
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="py-4 pr-6">
                     {isEditing ? (
-                      <div className="flex flex-wrap gap-2">
-                        {(["ROLE_USER", "ROLE_ADMIN", "ROLE_VENDOR"] as RoleType[]).map(
-                          (role) => (
-                            <button
-                              key={role}
-                              onClick={() => handleRoleToggle(role)}
-                              className={`rounded-full px-2.5 py-1 text-xs font-medium border transition-colors ${
-                                editRoles.includes(role)
-                                  ? "bg-indigo-500/20 border-indigo-500/50 text-indigo-300"
-                                  : "bg-white/5 border-white/10 text-slate-400 hover:bg-white/10"
-                              }`}
-                            >
-                              {role.replace("ROLE_", "")}
-                            </button>
-                          )
-                        )}
+                      <div className="flex flex-wrap gap-1.5">
+                        {(["ROLE_USER", "ROLE_ADMIN", "ROLE_VENDOR"] as RoleType[]).map((role) => (
+                          <button
+                            key={role}
+                            onClick={() => handleRoleToggle(role)}
+                            className={`px-2.5 py-1 text-xs font-semibold rounded border transition-colors ${
+                              editRoles.includes(role)
+                                ? "bg-[#1b1c1c] text-white border-[#1b1c1c]"
+                                : "bg-transparent text-[#444748] border-[#c4c7c7] hover:border-[#747878]"
+                            }`}
+                          >
+                            {role.replace("ROLE_", "")}
+                          </button>
+                        ))}
                       </div>
                     ) : (
                       <div className="flex flex-wrap gap-1.5">
@@ -139,67 +129,63 @@ export function UserTable({ users, onRefresh }: UserTableProps) {
                       </div>
                     )}
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="py-4 pr-6">
                     <span
-                      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded border ${
                         u.enabled
-                          ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                          : "bg-rose-500/10 text-rose-400 border border-rose-500/20"
+                          ? "bg-[rgba(42,103,107,0.08)] text-[#2a676b] border-[rgba(42,103,107,0.2)]"
+                          : "bg-[#ffdad6]/40 text-[#93000a] border-[#ba1a1a]/20"
                       }`}
                     >
-                      <span
-                        className={`h-1.5 w-1.5 rounded-full ${
-                          u.enabled ? "bg-emerald-400" : "bg-rose-400"
-                        }`}
-                      />
+                      <span className={`h-1.5 w-1.5 rounded-full ${u.enabled ? "bg-[#2a676b]" : "bg-[#ba1a1a]"}`} />
                       {u.enabled ? "Active" : "Disabled"}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-right">
+                  <td className="py-4 text-right">
                     {isEditing ? (
-                      <div className="flex items-center justify-end gap-2">
+                      <div className="flex items-center justify-end gap-1">
                         <button
                           onClick={() => setEditingId(null)}
                           disabled={isLoading}
-                          className="p-1.5 text-slate-400 hover:text-white rounded hover:bg-white/10 transition-colors"
+                          className="p-1.5 text-[#747878] hover:text-[#1b1c1c] hover:bg-[#efeded] rounded transition-colors"
                           aria-label="Cancel"
                         >
-                          <X size={16} />
+                          <X size={15} />
                         </button>
                         <button
                           onClick={() => saveRoles(u.id)}
                           disabled={isLoading}
-                          className="p-1.5 text-emerald-400 hover:text-emerald-300 rounded hover:bg-emerald-500/20 transition-colors"
+                          className="p-1.5 text-[#2a676b] hover:bg-[rgba(42,103,107,0.1)] rounded transition-colors"
                           aria-label="Save"
                         >
-                          <Check size={16} />
+                          <Check size={15} />
                         </button>
                       </div>
                     ) : (
-                      <div className="flex items-center justify-end gap-2">
+                      <div className="flex items-center justify-end gap-1">
                         <button
                           onClick={() => handleStatusToggle(u)}
                           disabled={isLoading}
-                          className="p-1.5 text-slate-400 hover:text-amber-400 rounded hover:bg-amber-500/20 transition-colors"
+                          className="p-1.5 text-[#747878] hover:text-amber-700 hover:bg-amber-50 rounded transition-colors"
                           title={u.enabled ? "Disable user" : "Enable user"}
                         >
-                          <ShieldAlert size={16} />
+                          <ShieldAlert size={15} />
                         </button>
                         <button
                           onClick={() => startEdit(u)}
                           disabled={isLoading}
-                          className="p-1.5 text-slate-400 hover:text-indigo-400 rounded hover:bg-indigo-500/20 transition-colors"
+                          className="p-1.5 text-[#747878] hover:text-[#1b1c1c] hover:bg-[#efeded] rounded transition-colors"
                           title="Edit roles"
                         >
-                          <Edit size={16} />
+                          <Edit size={15} />
                         </button>
                         <button
                           onClick={() => handleDelete(u)}
                           disabled={isLoading}
-                          className="p-1.5 text-slate-400 hover:text-rose-400 rounded hover:bg-rose-500/20 transition-colors"
+                          className="p-1.5 text-[#747878] hover:text-[#ba1a1a] hover:bg-[#ffdad6]/40 rounded transition-colors"
                           title="Delete user"
                         >
-                          <Trash2 size={16} />
+                          <Trash2 size={15} />
                         </button>
                       </div>
                     )}
@@ -209,7 +195,7 @@ export function UserTable({ users, onRefresh }: UserTableProps) {
             })}
             {users.length === 0 && (
               <tr>
-                <td colSpan={4} className="px-6 py-8 text-center text-slate-500">
+                <td colSpan={4} className="py-10 text-center text-sm text-[#747878] font-sans">
                   No users found.
                 </td>
               </tr>

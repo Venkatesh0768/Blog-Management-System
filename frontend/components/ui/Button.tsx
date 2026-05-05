@@ -14,19 +14,19 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variantClasses: Record<Variant, string> = {
   primary:
-    "bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white shadow-lg shadow-indigo-900/30",
+    "bg-[#1b1c1c] hover:bg-black active:bg-[#2a2a2a] text-white border border-[#1b1c1c]",
   secondary:
-    "bg-white/8 hover:bg-white/12 active:bg-white/6 text-slate-100 border border-white/10",
+    "bg-transparent hover:bg-[#efeded] active:bg-[#e9e8e7] text-[#1b1c1c] border border-[#1b1c1c]",
   ghost:
-    "hover:bg-white/6 active:bg-white/4 text-slate-300 hover:text-white",
+    "bg-transparent hover:bg-[#efeded] active:bg-[#e9e8e7] text-[#444748] hover:text-[#1b1c1c] border border-transparent",
   danger:
-    "bg-rose-600/20 hover:bg-rose-600/30 active:bg-rose-700/40 text-rose-400 border border-rose-500/30",
+    "bg-transparent hover:bg-[#ffdad6] active:bg-[#ffdad6]/80 text-[#ba1a1a] border border-[#ba1a1a]/40 hover:border-[#ba1a1a]",
 };
 
 const sizeClasses: Record<Size, string> = {
-  sm: "h-8 px-3 text-sm rounded-lg gap-1.5",
-  md: "h-10 px-4 text-sm rounded-xl gap-2",
-  lg: "h-12 px-5 text-base rounded-xl gap-2",
+  sm: "h-8 px-3 text-xs gap-1.5",
+  md: "h-9 px-4 text-sm gap-2",
+  lg: "h-11 px-6 text-sm gap-2",
 };
 
 export function Button({
@@ -45,10 +45,11 @@ export function Button({
     <button
       disabled={isDisabled}
       className={[
-        "inline-flex items-center justify-center font-medium",
-        "transition-all duration-150 focus-visible:outline-none",
-        "focus-visible:ring-2 focus-visible:ring-indigo-500/60",
-        "disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none",
+        "inline-flex items-center justify-center font-sans font-semibold",
+        "rounded transition-all duration-150 focus-visible:outline-none",
+        "focus-visible:ring-2 focus-visible:ring-[#2a676b]/50 focus-visible:ring-offset-1",
+        "disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none",
+        "tracking-wide",
         variantClasses[variant],
         sizeClasses[size],
         fullWidth ? "w-full" : "",
@@ -58,7 +59,7 @@ export function Button({
         .join(" ")}
       {...props}
     >
-      {loading && <Loader2 className="animate-spin" size={16} />}
+      {loading && <Loader2 className="animate-spin shrink-0" size={14} />}
       {children}
     </button>
   );

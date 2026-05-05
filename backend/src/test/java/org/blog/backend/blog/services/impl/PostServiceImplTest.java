@@ -604,8 +604,8 @@ class PostServiceImplTest {
         }
 
         @Test
-        @DisplayName("all image IDs are mapped to imageIds regardless of isPrimary")
-        void allImageIdsMapped() {
+        @DisplayName("all image URLs are mapped to imageUrls regardless of isPrimary")
+        void allImageUrlsMapped() {
             Post post = buildPost("Post", "post", "content", PostStatus.PUBLISHED);
 
             UUID imgId1 = UUID.randomUUID();
@@ -620,8 +620,8 @@ class PostServiceImplTest {
 
             when(postRepository.findById(postId)).thenReturn(Optional.of(post));
 
-            assertThat(postService.getPostById(postId).getImageIds())
-                    .containsExactlyInAnyOrder(imgId1, imgId2);
+            assertThat(postService.getPostById(postId).getImageUrls())
+                    .containsExactlyInAnyOrder("u1", "u2");
         }
 
         @Test
@@ -635,7 +635,7 @@ class PostServiceImplTest {
 
             PostResponseDto dto = postService.getPostById(postId);
             assertThat(dto.getCommentIds()).isEmpty();
-            assertThat(dto.getImageIds()).isEmpty();
+            assertThat(dto.getImageUrls()).isEmpty();
         }
 
         @Test

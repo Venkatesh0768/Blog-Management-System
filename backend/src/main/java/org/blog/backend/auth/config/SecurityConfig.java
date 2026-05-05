@@ -66,6 +66,9 @@ public class SecurityConfig {
             "/swagger-ui.html",
             // Health check
             "/actuator/health",
+
+            "/public/**",
+            "/comments/post/**"
     };
 
     @Bean

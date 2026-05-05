@@ -22,7 +22,6 @@ function VerifyOtpContent() {
   const [resendLoading, setResendLoading] = useState(false);
   const [countdown, setCountdown] = useState(RESEND_SECONDS);
 
-  // Countdown timer
   useEffect(() => {
     if (countdown <= 0) return;
     const t = setTimeout(() => setCountdown((c) => c - 1), 1000);
@@ -36,14 +35,13 @@ function VerifyOtpContent() {
     }
     setError(null);
     setLoading(true);
-
     try {
       await authApi.verifyOtp({ email, otp });
-      setSuccess("Email verified! Redirecting to login...");
+      setSuccess("Email verified! Redirecting to sign in...");
       setTimeout(() => router.push("/login"), 1500);
     } catch (err) {
       if (isAxiosError(err)) {
-        setError(err.response?.data?.message ?? "Invalid or expired OTP.");
+        setError(err.response?.data?.message ?? "Invalid or expired code.");
       } else {
         setError("Verification failed. Please try again.");
       }
@@ -52,7 +50,6 @@ function VerifyOtpContent() {
     }
   }, [otp, email, router]);
 
-  // Auto-submit when all 6 digits entered
   useEffect(() => {
     if (otp.length === 6) handleVerify();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -63,13 +60,13 @@ function VerifyOtpContent() {
     setError(null);
     try {
       await authApi.resendOtp(email);
-      setSuccess("A new OTP has been sent to your email.");
+      setSuccess("A new code has been sent to your email.");
       setCountdown(RESEND_SECONDS);
       setOtp("");
       setTimeout(() => setSuccess(null), 4000);
     } catch (err) {
       if (isAxiosError(err)) {
-        setError(err.response?.data?.message ?? "Failed to resend OTP.");
+        setError(err.response?.data?.message ?? "Failed to resend code.");
       }
     } finally {
       setResendLoading(false);
@@ -90,22 +87,24 @@ function VerifyOtpContent() {
   return (
     <AuthCard>
       <AuthHeader
-        title="Check your email"
+        title="Verify your email"
         subtitle={`We sent a 6-digit code to ${email}`}
       />
 
-      <div className="flex flex-col gap-5">
+      <div className="flex flex-col gap-6">
         <Alert variant="success" message={success} />
         <Alert variant="error" message={error} />
 
-        <OtpInput
-          value={otp}
-          onChange={(v) => {
-            setOtp(v);
-            setError(null);
-          }}
-          error={!!error}
-        />
+        <div className="flex justify-center py-2">
+          <OtpInput
+            value={otp}
+            onChange={(v) => {
+              setOtp(v);
+              setError(null);
+            }}
+            error={!!error}
+          />
+        </div>
 
         <Button
           onClick={handleVerify}
@@ -114,22 +113,20 @@ function VerifyOtpContent() {
           size="lg"
           disabled={otp.length < 6}
         >
-          {loading ? "Verifying..." : "Verify email"}
+          {loading ? "Verifying..." : "Verify code"}
         </Button>
 
-        <div className="text-center text-sm text-slate-500">
+        <div className="text-center text-sm text-[#747878] font-sans">
           {countdown > 0 ? (
             <span>
               Resend code in{" "}
-              <span className="text-indigo-400 font-medium tabular-nums">
-                {countdown}s
-              </span>
+              <span className="text-[#1b1c1c] font-medium tabular-nums">{countdown}s</span>
             </span>
           ) : (
             <button
               onClick={handleResend}
               disabled={resendLoading}
-              className="text-indigo-400 hover:text-indigo-300 font-medium transition-colors disabled:opacity-50"
+              className="text-[#1b1c1c] font-medium hover:text-[#2a676b] transition-colors disabled:opacity-50"
             >
               {resendLoading ? "Sending..." : "Resend code"}
             </button>
@@ -142,13 +139,15 @@ function VerifyOtpContent() {
 
 export default function VerifyOtpPage() {
   return (
-    <Suspense fallback={
-      <AuthCard>
-        <div className="flex justify-center items-center h-48">
-          <div className="h-8 w-8 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin" />
-        </div>
-      </AuthCard>
-    }>
+    <Suspense
+      fallback={
+        <AuthCard>
+          <div className="flex justify-center items-center h-48">
+            <div className="h-6 w-6 rounded-full border-2 border-[#2a676b] border-t-transparent animate-spin" />
+          </div>
+        </AuthCard>
+      }
+    >
       <VerifyOtpContent />
     </Suspense>
   );

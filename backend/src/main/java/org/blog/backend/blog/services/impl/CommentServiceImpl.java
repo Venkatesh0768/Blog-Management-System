@@ -6,6 +6,7 @@ import org.blog.backend.auth.model.User;
 import org.blog.backend.auth.repository.UserRepository;
 import org.blog.backend.blog.dto.commentsDto.commentRequestDtos.CreateCommentRequestDto;
 import org.blog.backend.blog.dto.commentsDto.commentResponseDtos.CommentResponseDto;
+import org.blog.backend.blog.exception.EmailNotFoundException;
 import org.blog.backend.blog.exception.PostNotFoundException;
 import org.blog.backend.blog.model.Comment;
 import org.blog.backend.blog.model.Post;
@@ -28,9 +29,9 @@ public class CommentServiceImpl  implements CommentService {
     private final PostRepository postRepository;
 
     @Override
-    public CommentResponseDto addComment(CreateCommentRequestDto requestDto, UUID userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new UserNotFoundException("Bhai isa Koi User nahi hain"));
+    public CommentResponseDto addComment(CreateCommentRequestDto requestDto, String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new EmailNotFoundException("NO User Found With this email"));
 
         Post post = postRepository.findById(requestDto.getPostId())
                 .orElseThrow(() -> new PostNotFoundException("Post is not Found"));
@@ -88,6 +89,7 @@ public class CommentServiceImpl  implements CommentService {
                 .id(c.getId())
                 .content(c.getContent())
                 .userId(c.getUser().getId())
+                .username(c.getUser().getFirstName() + " " + c.getUser().getLastName())
                 .postId(c.getPost().getId())
                 .parentId(c.getParent() != null ? c.getParent().getId() : null)
                 .createdAt(c.getCreatedAt())
@@ -100,6 +102,7 @@ public class CommentServiceImpl  implements CommentService {
                 .id(c.getId())
                 .content(c.getContent())
                 .userId(c.getUser().getId())
+                .username(c.getUser().getFirstName() + " " + c.getUser().getLastName())
                 .postId(c.getPost().getId())
                 .parentId(c.getParent() != null ? c.getParent().getId() : null)
                 .createdAt(c.getCreatedAt())

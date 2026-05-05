@@ -4,22 +4,33 @@ spring:
 
   datasource:
     url: jdbc:h2:mem:testdb;MODE=MySQL
-
     username: sa
     password:
 
   jpa:
     hibernate:
       ddl-auto: create-drop
+    show-sql: false
     properties:
       hibernate:
-        dialect: org.hibernate.dialect.H2Dialect
         format_sql: true
+
+  h2:
+    console:
+      enabled: true
 
   data:
     redis:
       repositories:
         enabled: false
+
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: test-google-id
+            client-secret: test-google-secret
 
   mail:
     host: localhost
@@ -28,13 +39,13 @@ spring:
     password: test-password
 
 jwt:
-  secret: ${JWT_SECRET:MzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTI=}
-  expiration: ${JWT_EXPIRATION:86400000}
-  refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800000}
+  secret: test-secret-key-12345678901234567890
+  expiration: 86400000
+  refresh-expiration: 604800000
 
 otp:
-  expiration: ${OTP_EXPIRATION:300000}
-  length: ${OTP_LENGTH:6}
+  expiration: 300000
+  length: 6
 
 cors:
   allowed-origins: http://localhost
@@ -42,17 +53,6 @@ cors:
 app:
   frontend-url: http://localhost
   base-url: http://localhost
-  short-url-ttl: 86400
-
-  cookie:
-    secure: false
-    same-site: Lax
-    domain: ""
-    max-age-seconds: 604800
-    path: /
-
-  scheduler:
-    token-cleanup-cron: "0 0 3 * * *"
 
 admin:
   email: test@admin.com

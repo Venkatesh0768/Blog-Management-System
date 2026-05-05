@@ -34,10 +34,7 @@ export function OtpInput({ length = 6, value, onChange, error }: OtpInputProps) 
     [value, length, onChange]
   );
 
-  const handleKeyDown = (
-    e: React.KeyboardEvent<HTMLInputElement>,
-    idx: number
-  ) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, idx: number) => {
     if (e.key === "Backspace") {
       if (value[idx]) {
         const chars = value.split("");
@@ -61,7 +58,7 @@ export function OtpInput({ length = 6, value, onChange, error }: OtpInputProps) 
   };
 
   return (
-    <div className={`flex gap-2.5 justify-center ${shake ? "shake" : ""}`}>
+    <div className={`flex gap-2 justify-center ${shake ? "shake" : ""}`}>
       {Array.from({ length }).map((_, idx) => (
         <input
           key={idx}
@@ -77,14 +74,9 @@ export function OtpInput({ length = 6, value, onChange, error }: OtpInputProps) 
           onPaste={handlePaste}
           onFocus={(e) => e.target.select()}
           className={[
-            "h-12 w-11 rounded-xl text-center text-lg font-semibold",
-            "bg-white/5 border transition-all outline-none",
-            value[idx]
-              ? "border-indigo-500 bg-indigo-600/10 text-white"
-              : "border-white/10 text-white",
-            error
-              ? "border-red-500 bg-red-500/10"
-              : "focus:border-indigo-500 focus:shadow-[0_0_0_3px_rgba(99,102,241,0.2)]",
+            "otp-input",
+            value[idx] ? "filled" : "",
+            error ? "error" : "",
           ]
             .filter(Boolean)
             .join(" ")}

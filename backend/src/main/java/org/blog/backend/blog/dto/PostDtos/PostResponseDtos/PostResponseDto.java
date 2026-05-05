@@ -22,8 +22,9 @@ public class PostResponseDto {
     private String slug;
     private PostStatus postStatus;
     private UUID userId;
+    private String authorName;
     private List<UUID> commentIds;
-    private List<UUID> imageIds;
+    private List<String> imageUrls;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

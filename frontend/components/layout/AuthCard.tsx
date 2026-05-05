@@ -1,4 +1,5 @@
 import React from "react";
+import Link from "next/link";
 
 export function AuthCard({
   children,
@@ -8,14 +9,79 @@ export function AuthCard({
   className?: string;
 }) {
   return (
-    <main className="bg-auth min-h-screen flex items-center justify-center p-4">
+    <main
+      style={{
+        minHeight: "100vh",
+        width: "100%",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: "#f5f3f3",
+        backgroundImage: "radial-gradient(circle, #c4c7c7 1px, transparent 1px)",
+        backgroundSize: "28px 28px",
+        padding: "24px",
+        boxSizing: "border-box",
+      }}
+    >
       <div
-        className={[
-          "glass-card fade-in w-full max-w-md p-8",
-          className,
-        ].join(" ")}
+        style={{
+          width: "100%",
+          maxWidth: "440px",
+        }}
+        className="fade-in"
       >
-        {children}
+        {/* Brand mark */}
+        <div style={{ textAlign: "center", marginBottom: "32px" }}>
+          <Link
+            href="/"
+            style={{
+              display: "inline-flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: "4px",
+              textDecoration: "none",
+            }}
+          >
+            <span
+              style={{
+                fontFamily: "var(--font-sans, Manrope, sans-serif)",
+                fontWeight: 700,
+                fontSize: "20px",
+                color: "#1b1c1c",
+                letterSpacing: "-0.02em",
+              }}
+            >
+              StoryStack
+            </span>
+            <span
+              style={{
+                fontFamily: "var(--font-sans, Manrope, sans-serif)",
+                fontSize: "11px",
+                fontWeight: 600,
+                letterSpacing: "0.08em",
+                textTransform: "uppercase",
+                color: "#747878",
+              }}
+            >
+              Editorial Studio
+            </span>
+          </Link>
+        </div>
+
+        {/* Card */}
+        <div
+          className={className}
+          style={{
+            background: "#ffffff",
+            border: "1px solid #c4c7c7",
+            borderRadius: "8px",
+            padding: "40px",
+            width: "100%",
+            boxSizing: "border-box",
+          }}
+        >
+          {children}
+        </div>
       </div>
     </main>
   );
@@ -29,27 +95,32 @@ export function AuthHeader({
   subtitle?: string;
 }) {
   return (
-    <div className="mb-7 text-center">
-      <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-600/20 ring-1 ring-indigo-500/30">
-        <svg
-          width="24"
-          height="24"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.8"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className="text-indigo-400"
-        >
-          <path d="M12 2L2 7l10 5 10-5-10-5z" />
-          <path d="M2 17l10 5 10-5" />
-          <path d="M2 12l10 5 10-5" />
-        </svg>
-      </div>
-      <h1 className="text-2xl font-bold text-white">{title}</h1>
+    <div style={{ marginBottom: "32px" }}>
+      <h1
+        style={{
+          fontFamily: "var(--font-sans, Manrope, sans-serif)",
+          fontSize: "26px",
+          fontWeight: 700,
+          color: "#1b1c1c",
+          letterSpacing: "-0.02em",
+          margin: "0 0 8px",
+          lineHeight: 1.2,
+        }}
+      >
+        {title}
+      </h1>
       {subtitle && (
-        <p className="mt-1.5 text-sm text-slate-400">{subtitle}</p>
+        <p
+          style={{
+            fontFamily: "var(--font-sans, Manrope, sans-serif)",
+            fontSize: "14px",
+            color: "#444748",
+            lineHeight: 1.5,
+            margin: 0,
+          }}
+        >
+          {subtitle}
+        </p>
       )}
     </div>
   );

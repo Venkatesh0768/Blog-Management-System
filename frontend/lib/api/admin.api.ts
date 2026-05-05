@@ -1,5 +1,6 @@
 import apiClient from "./client";
 import type { ApiResponse, AssignRolesRequest, User } from "@/types/auth.types";
+import type { PostResponseDto, Page } from "@/types/blog.types";
 import type { AxiosResponse } from "axios";
 
 export interface PageResponse<T> {
@@ -37,4 +38,16 @@ export const adminApi = {
 
   deleteUser: (id: string): Promise<AxiosResponse<ApiResponse>> =>
     apiClient.delete(`/admin/users/${id}`),
+
+  // ─── Post management ────────────────────────────────────────────────────────
+
+  getAllPosts: (
+    page = 0,
+    size = 20,
+    sort = "createdAt,desc"
+  ): Promise<AxiosResponse<Page<PostResponseDto>>> =>
+    apiClient.get("/admin/posts", { params: { page, size, sort } }),
+
+  deletePost: (postId: string): Promise<AxiosResponse<ApiResponse>> =>
+    apiClient.delete(`/admin/posts/${postId}`),
 };

@@ -16,6 +16,10 @@ import org.blog.backend.blog.model.Post;
 import org.blog.backend.blog.model.PostImages;
 import org.blog.backend.blog.repository.PostRepository;
 import org.blog.backend.blog.services.PostService;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.authentication.DisabledException;
 import org.springframework.stereotype.Service;
 
@@ -100,6 +104,7 @@ public class PostServiceImpl implements PostService {
     }
 
     @Override
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
     public PostResponseDto getPostById(UUID id) {
         Post post = postRepository.findById(id)
                 .orElseThrow(() -> new PostNotFoundException("The post is not found by this id"));
@@ -137,6 +142,20 @@ public class PostServiceImpl implements PostService {
         postRepository.delete(post);
     }
 
+    @Override
+    public Page<PostResponseDto> getAllLatestPosts(int page , int size , String sortBy , String sortDir) {
+        Sort sort = sortDir.equalsIgnoreCase("desc") ?
+                Sort.by(sortBy).descending() :
+                Sort.by(sortBy).ascending();
+
+        Pageable pageable = PageRequest.of(page, size , sort);
+
+        Page<Post> postPage = postRepository.findAll(pageable);
+        return postPage.map(this::mapToResponse);
+    }
+
+
+
 
     private PostResponseDto mapToResponse(Post post) {
 
@@ -149,12 +168,12 @@ public class PostServiceImpl implements PostService {
                     .toList();
         }
 
-        // ================= IMAGES (IDs only) =================
-        List<UUID> imageIds = new ArrayList<>();
+        // ================= IMAGES (URLs) =================
+        List<String> imageUrls = new ArrayList<>();
 
         if (post.getImages() != null) {
-            imageIds = post.getImages().stream()
-                    .map(PostImages::getId)
+            imageUrls = post.getImages().stream()
+                    .map(PostImages::getImageUrl)
                     .toList();
         }
 
@@ -165,8 +184,9 @@ public class PostServiceImpl implements PostService {
                 .slug(post.getSlug())
                 .postStatus(post.getPostStatus())
                 .userId(post.getUser().getId())
+                .authorName(post.getUser().getFirstName() + " " + post.getUser().getLastName())
                 .commentIds(commentIds)
-                .imageIds(imageIds)
+                .imageUrls(imageUrls)
                 .createdAt(post.getCreatedAt())
                 .updatedAt(post.getUpdatedAt())
                 .build();

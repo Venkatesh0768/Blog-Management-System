@@ -7,6 +7,6 @@ import java.util.List;
 import java.util.UUID;
 
 public interface CommentService {
-    CommentResponseDto addComment(CreateCommentRequestDto requestDto , UUID userId);
+    CommentResponseDto addComment(CreateCommentRequestDto requestDto , String email);
      List<CommentResponseDto> getCommentsForPost(UUID postId);
 }

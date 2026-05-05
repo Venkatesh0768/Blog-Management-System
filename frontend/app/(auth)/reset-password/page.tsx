@@ -26,7 +26,7 @@ function ResetPasswordContent() {
     const e: typeof errors = {};
     if (otp.length !== 6) e.otp = "Please enter the complete 6-digit code";
     if (!newPassword) e.newPassword = "New password is required";
-    else if (newPassword.length < 8) e.newPassword = "Must be at least 8 characters";
+    else if (newPassword.length < 8) e.newPassword = "At least 8 characters";
     if (!confirm) e.confirm = "Please confirm the new password";
     else if (confirm !== newPassword) e.confirm = "Passwords do not match";
     setErrors(e);
@@ -38,13 +38,8 @@ function ResetPasswordContent() {
     if (!validate()) return;
     setApiError(null);
     setLoading(true);
-
     try {
-      await authApi.resetPassword({
-        email: emailParam,
-        otp,
-        newPassword,
-      });
+      await authApi.resetPassword({ email: emailParam, otp, newPassword });
       router.push("/login?reset=1");
     } catch (err) {
       if (isAxiosError(err)) {
@@ -68,12 +63,12 @@ function ResetPasswordContent() {
         <Alert variant="error" message={apiError} />
 
         <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium text-slate-300">
+          <label className="text-sm font-medium text-[#1b1c1c] font-sans">
             Verification code
           </label>
           <OtpInput value={otp} onChange={setOtp} error={!!errors.otp} />
           {errors.otp && (
-            <p className="text-xs text-red-400">⚠ {errors.otp}</p>
+            <p className="text-xs text-[#ba1a1a] font-sans">⚠ {errors.otp}</p>
           )}
         </div>
 
@@ -83,10 +78,7 @@ function ResetPasswordContent() {
           placeholder="Min. 8 characters"
           autoComplete="new-password"
           value={newPassword}
-          onChange={(e) => {
-            setNewPassword(e.target.value);
-            setErrors((er) => ({ ...er, newPassword: undefined }));
-          }}
+          onChange={(e) => { setNewPassword(e.target.value); setErrors((er) => ({ ...er, newPassword: undefined })); }}
           error={errors.newPassword}
           disabled={loading}
         />
@@ -97,10 +89,7 @@ function ResetPasswordContent() {
           placeholder="Repeat new password"
           autoComplete="new-password"
           value={confirm}
-          onChange={(e) => {
-            setConfirm(e.target.value);
-            setErrors((er) => ({ ...er, confirm: undefined }));
-          }}
+          onChange={(e) => { setConfirm(e.target.value); setErrors((er) => ({ ...er, confirm: undefined })); }}
           error={errors.confirm}
           disabled={loading}
         />
@@ -110,8 +99,8 @@ function ResetPasswordContent() {
         </Button>
       </form>
 
-      <p className="mt-5 text-center text-sm text-slate-500">
-        <Link href="/forgot-password" className="text-indigo-400 hover:text-indigo-300 transition-colors">
+      <p className="mt-5 text-center text-sm text-[#747878] font-sans">
+        <Link href="/forgot-password" className="text-[#1b1c1c] hover:text-[#2a676b] transition-colors">
           ← Resend code
         </Link>
       </p>
@@ -121,13 +110,15 @@ function ResetPasswordContent() {
 
 export default function ResetPasswordPage() {
   return (
-    <Suspense fallback={
-      <AuthCard>
-        <div className="flex justify-center items-center h-48">
-          <div className="h-8 w-8 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin" />
-        </div>
-      </AuthCard>
-    }>
+    <Suspense
+      fallback={
+        <AuthCard>
+          <div className="flex justify-center items-center h-48">
+            <div className="h-6 w-6 rounded-full border-2 border-[#2a676b] border-t-transparent animate-spin" />
+          </div>
+        </AuthCard>
+      }
+    >
       <ResetPasswordContent />
     </Suspense>
   );

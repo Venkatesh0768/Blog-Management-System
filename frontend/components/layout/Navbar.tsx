@@ -1,22 +1,15 @@
 "use client";
 import React, { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import {
-  LayoutDashboard,
-  LogOut,
-  Menu,
-  Shield,
-  User,
-  X,
-  BookOpen,
-} from "lucide-react";
+import { useRouter, usePathname } from "next/navigation";
+import { LogOut, Menu, Shield, User, X, PenLine } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { isAdmin, initials, displayName } from "@/lib/utils/roles";
 
 export function Navbar() {
   const { user, logout, status } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
 
@@ -24,71 +17,129 @@ export function Navbar() {
     setLoggingOut(true);
     try {
       await logout();
-      router.push("/login");
+      router.push("/");
     } finally {
       setLoggingOut(false);
       setMenuOpen(false);
     }
   };
 
-  if (status === "loading" || status === "unauthenticated") return null;
-
   const admin = isAdmin(user);
 
   return (
-    <header className="sticky top-0 z-40 border-b border-white/8 bg-slate-950/80 backdrop-blur-xl">
-      <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6">
+    <header className="sticky top-0 z-40 bg-[#fbf9f9]/95 backdrop-blur-sm border-b border-[#c4c7c7]">
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          height: "56px",
+          width: "100%",
+          maxWidth: "1280px",
+          margin: "0 auto",
+          padding: "0 40px",
+          boxSizing: "border-box",
+        }}
+      >
         {/* Logo */}
         <Link
-          href="/dashboard"
-          className="flex items-center gap-2 font-bold text-white text-base"
+          href="/"
+          className="font-sans font-bold text-base text-[#1b1c1c] tracking-tight hover:text-[#2a676b] transition-colors"
         >
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-600">
-            <BookOpen size={14} className="text-white" />
-          </div>
-          BlogApp
+          StoryStack
         </Link>
 
         {/* Desktop nav */}
         <nav className="hidden md:flex items-center gap-1">
-          <NavLink href="/dashboard" icon={<LayoutDashboard size={15} />}>
-            Dashboard
-          </NavLink>
-          <NavLink href="/profile" icon={<User size={15} />}>
-            Profile
-          </NavLink>
-          {admin && (
-            <NavLink href="/admin" icon={<Shield size={15} />}>
-              Admin
-            </NavLink>
+          <NavLink href="/" active={pathname === "/"}>Stories</NavLink>
+          {user && (
+            <>
+              <NavLink href="/dashboard" active={pathname === "/dashboard"}>Dashboard</NavLink>
+              <NavLink href="/profile" active={pathname === "/profile"}>Profile</NavLink>
+              {admin && (
+                <NavLink href="/admin" active={pathname.startsWith("/admin")}>Admin</NavLink>
+              )}
+            </>
           )}
         </nav>
 
         {/* Right side */}
         <div className="flex items-center gap-3">
-          {/* Avatar + name */}
-          <div className="hidden sm:flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-600/30 ring-1 ring-indigo-500/40 text-xs font-semibold text-indigo-300">
-              {initials(user)}
-            </div>
-            <span className="text-sm text-slate-300 font-medium max-w-[120px] truncate">
-              {displayName(user)}
-            </span>
-          </div>
+          {status === "loading" ? (
+            <div className="w-5 h-5 rounded-full border-2 border-[#2a676b] border-t-transparent animate-spin" />
+          ) : user ? (
+            <>
+              <Link
+                href="/dashboard/posts/new"
+                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold font-sans bg-[#1b1c1c] text-white rounded hover:bg-black transition-colors"
+              >
+                <PenLine size={14} />
+                Write
+              </Link>
 
-          {/* Logout */}
-          <button
-            onClick={handleLogout}
-            disabled={loggingOut}
-            className="hidden sm:flex items-center gap-1.5 text-sm text-slate-400 hover:text-white transition-colors px-2.5 py-1.5 rounded-lg hover:bg-white/6"
-          >
-            <LogOut size={15} />
-            {loggingOut ? "..." : "Logout"}
-          </button>
+              {/* Avatar */}
+              <div className="relative group">
+                <button
+                  className="flex h-8 w-8 items-center justify-center rounded-full bg-[#efeded] border border-[#c4c7c7] text-xs font-semibold text-[#1b1c1c] hover:border-[#747878] transition-colors"
+                  aria-label="Account menu"
+                >
+                  {initials(user)}
+                </button>
+                {/* Dropdown */}
+                <div className="absolute right-0 top-full mt-2 w-52 bg-[#ffffff] border border-[#c4c7c7] rounded shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
+                  <div className="px-4 py-3 border-b border-[#e9e8e7]">
+                    <p className="text-sm font-semibold text-[#1b1c1c] truncate">{displayName(user)}</p>
+                    <p className="text-xs text-[#747878] truncate">{user.email}</p>
+                  </div>
+                  <Link
+                    href="/profile"
+                    className="flex items-center gap-2 px-4 py-2.5 text-sm text-[#444748] hover:bg-[#f5f3f3] hover:text-[#1b1c1c] transition-colors"
+                  >
+                    <User size={14} />
+                    Account Settings
+                  </Link>
+                  {admin && (
+                    <Link
+                      href="/admin"
+                      className="flex items-center gap-2 px-4 py-2.5 text-sm text-[#444748] hover:bg-[#f5f3f3] hover:text-[#1b1c1c] transition-colors"
+                    >
+                      <Shield size={14} />
+                      Admin Panel
+                    </Link>
+                  )}
+                  <div className="border-t border-[#e9e8e7]">
+                    <button
+                      onClick={handleLogout}
+                      disabled={loggingOut}
+                      className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-[#ba1a1a] hover:bg-[#ffdad6]/40 transition-colors"
+                    >
+                      <LogOut size={14} />
+                      {loggingOut ? "Signing out..." : "Sign out"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="flex items-center gap-2">
+              <Link
+                href="/login"
+                className="text-sm font-medium text-[#444748] hover:text-[#1b1c1c] transition-colors px-3 py-1.5"
+              >
+                Sign in
+              </Link>
+              <Link
+                href="/register"
+                className="text-sm font-semibold bg-[#1b1c1c] text-white px-3 py-1.5 rounded hover:bg-black transition-colors"
+              >
+                Get started
+              </Link>
+            </div>
+          )}
 
           {/* Mobile menu button */}
           <button
-            className="md:hidden text-slate-400 hover:text-white p-1.5"
+            className="md:hidden text-[#444748] hover:text-[#1b1c1c] p-1"
             onClick={() => setMenuOpen((v) => !v)}
             aria-label="Toggle menu"
           >
@@ -99,35 +150,44 @@ export function Navbar() {
 
       {/* Mobile menu */}
       {menuOpen && (
-        <div className="md:hidden border-t border-white/8 bg-slate-950/95 px-4 pb-4 pt-2">
-          <div className="flex items-center gap-2.5 py-3 border-b border-white/8 mb-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-600/30 ring-1 ring-indigo-500/40 text-xs font-semibold text-indigo-300">
-              {initials(user)}
+        <div className="md:hidden border-t border-[#c4c7c7] bg-[#fbf9f9] pb-4 pt-2" style={{ padding: "8px 40px 16px" }}>
+          {user && (
+            <div className="flex items-center gap-3 py-3 border-b border-[#e9e8e7] mb-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#efeded] border border-[#c4c7c7] text-xs font-semibold text-[#1b1c1c]">
+                {initials(user)}
+              </div>
+              <div>
+                <p className="text-sm font-medium text-[#1b1c1c]">{displayName(user)}</p>
+                <p className="text-xs text-[#747878]">{user.email}</p>
+              </div>
             </div>
-            <div>
-              <p className="text-sm font-medium text-white">{displayName(user)}</p>
-              <p className="text-xs text-slate-400">{user?.email}</p>
-            </div>
-          </div>
-          <MobileNavLink href="/dashboard" onClick={() => setMenuOpen(false)}>
-            Dashboard
-          </MobileNavLink>
-          <MobileNavLink href="/profile" onClick={() => setMenuOpen(false)}>
-            Profile
-          </MobileNavLink>
-          {admin && (
-            <MobileNavLink href="/admin" onClick={() => setMenuOpen(false)}>
-              Admin Panel
-            </MobileNavLink>
           )}
-          <button
-            onClick={handleLogout}
-            disabled={loggingOut}
-            className="mt-2 w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-rose-400 hover:bg-rose-500/10 transition-colors"
-          >
-            <LogOut size={15} />
-            {loggingOut ? "Logging out..." : "Logout"}
-          </button>
+
+          <MobileNavLink href="/" onClick={() => setMenuOpen(false)}>Stories</MobileNavLink>
+
+          {user ? (
+            <>
+              <MobileNavLink href="/dashboard" onClick={() => setMenuOpen(false)}>Dashboard</MobileNavLink>
+              <MobileNavLink href="/dashboard/posts/new" onClick={() => setMenuOpen(false)}>Write a Story</MobileNavLink>
+              <MobileNavLink href="/profile" onClick={() => setMenuOpen(false)}>Account Settings</MobileNavLink>
+              {admin && (
+                <MobileNavLink href="/admin" onClick={() => setMenuOpen(false)}>Admin Panel</MobileNavLink>
+              )}
+              <button
+                onClick={handleLogout}
+                disabled={loggingOut}
+                className="mt-2 w-full flex items-center gap-2 px-3 py-2 text-sm text-[#ba1a1a] hover:bg-[#ffdad6]/40 rounded transition-colors"
+              >
+                <LogOut size={14} />
+                {loggingOut ? "Signing out..." : "Sign out"}
+              </button>
+            </>
+          ) : (
+            <>
+              <MobileNavLink href="/login" onClick={() => setMenuOpen(false)}>Sign in</MobileNavLink>
+              <MobileNavLink href="/register" onClick={() => setMenuOpen(false)}>Get started</MobileNavLink>
+            </>
+          )}
         </div>
       )}
     </header>
@@ -136,19 +196,22 @@ export function Navbar() {
 
 function NavLink({
   href,
-  icon,
   children,
+  active,
 }: {
   href: string;
-  icon: React.ReactNode;
   children: React.ReactNode;
+  active?: boolean;
 }) {
   return (
     <Link
       href={href}
-      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm text-slate-400 hover:text-white hover:bg-white/6 transition-all"
+      className={`px-3 py-1.5 text-sm font-medium rounded transition-colors ${
+        active
+          ? "text-[#1b1c1c] font-semibold"
+          : "text-[#444748] hover:text-[#1b1c1c] hover:bg-[#efeded]"
+      }`}
     >
-      {icon}
       {children}
     </Link>
   );
@@ -167,7 +230,7 @@ function MobileNavLink({
     <Link
       href={href}
       onClick={onClick}
-      className="block px-3 py-2 rounded-xl text-sm text-slate-300 hover:text-white hover:bg-white/6 transition-colors"
+      className="block px-3 py-2 text-sm text-[#444748] hover:text-[#1b1c1c] hover:bg-[#efeded] rounded transition-colors"
     >
       {children}
     </Link>

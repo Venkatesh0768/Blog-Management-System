@@ -32,9 +32,10 @@ public class PostController {
 
 
     @GetMapping("/me")
-    public ResponseEntity<List<PostResponseDto>> getAllPosts(Authentication authentication) {
+    public ResponseEntity<List<PostResponseDto>> getAllPostsOfUser(Authentication authentication) {
         return new ResponseEntity<>(postService.getPostsOfUser(authentication.getName()), HttpStatus.OK);
     }
+
 
     @PatchMapping("/{postId}")
     public ResponseEntity<PostResponseDto> updatePost(@Valid @RequestBody UpdatePostRequestDto requestDto, @PathVariable UUID postId) {

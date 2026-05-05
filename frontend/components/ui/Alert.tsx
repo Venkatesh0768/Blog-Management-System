@@ -12,20 +12,20 @@ interface AlertProps {
 
 const config: Record<AlertVariant, { icon: React.ReactNode; cls: string }> = {
   success: {
-    icon: <CheckCircle2 size={16} />,
-    cls: "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20",
+    icon: <CheckCircle2 size={15} />,
+    cls: "bg-[rgba(42,103,107,0.08)] text-[#2a676b] border border-[rgba(42,103,107,0.2)]",
   },
   error: {
-    icon: <XCircle size={16} />,
-    cls: "bg-red-500/10 text-red-400 border border-red-500/20",
+    icon: <XCircle size={15} />,
+    cls: "bg-[#ffdad6]/60 text-[#93000a] border border-[#ba1a1a]/20",
   },
   warning: {
-    icon: <AlertCircle size={16} />,
-    cls: "bg-amber-500/10 text-amber-400 border border-amber-500/20",
+    icon: <AlertCircle size={15} />,
+    cls: "bg-amber-50 text-amber-800 border border-amber-200",
   },
   info: {
-    icon: <Info size={16} />,
-    cls: "bg-indigo-500/10 text-indigo-300 border border-indigo-500/20",
+    icon: <Info size={15} />,
+    cls: "bg-[#efeded] text-[#444748] border border-[#c4c7c7]",
   },
 };
 
@@ -36,7 +36,7 @@ export function Alert({ variant = "info", message, className = "" }: AlertProps)
   return (
     <div
       className={[
-        "flex items-start gap-2 rounded-xl px-3.5 py-3 text-sm leading-snug",
+        "flex items-start gap-2.5 rounded px-3.5 py-3 text-sm leading-snug font-sans",
         cls,
         className,
       ].join(" ")}

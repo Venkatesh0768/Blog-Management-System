@@ -24,13 +24,12 @@ export default function RegisterPage() {
 
   const validate = () => {
     const e: Partial<typeof form> = {};
-    if (!form.firstName.trim()) e.firstName = "First name is required";
-    if (!form.lastName.trim()) e.lastName = "Last name is required";
+    if (!form.firstName.trim()) e.firstName = "Required";
+    if (!form.lastName.trim()) e.lastName = "Required";
     if (!form.email) e.email = "Email is required";
     else if (!/\S+@\S+\.\S+/.test(form.email)) e.email = "Enter a valid email";
     if (!form.password) e.password = "Password is required";
-    else if (form.password.length < 8)
-      e.password = "Password must be at least 8 characters";
+    else if (form.password.length < 8) e.password = "At least 8 characters";
     if (!form.confirm) e.confirm = "Please confirm your password";
     else if (form.confirm !== form.password) e.confirm = "Passwords do not match";
     setErrors(e);
@@ -42,7 +41,6 @@ export default function RegisterPage() {
     if (!validate()) return;
     setApiError(null);
     setLoading(true);
-
     try {
       await authApi.signup({
         firstName: form.firstName.trim(),
@@ -50,9 +48,7 @@ export default function RegisterPage() {
         email: form.email.trim().toLowerCase(),
         password: form.password,
       });
-      router.push(
-        `/verify-otp?email=${encodeURIComponent(form.email.trim().toLowerCase())}`
-      );
+      router.push(`/verify-otp?email=${encodeURIComponent(form.email.trim().toLowerCase())}`);
     } catch (err) {
       if (isAxiosError(err)) {
         setApiError(err.response?.data?.message ?? "Registration failed. Please try again.");
@@ -72,8 +68,8 @@ export default function RegisterPage() {
   return (
     <AuthCard>
       <AuthHeader
-        title="Create an account"
-        subtitle="Start your journey with BlogApp"
+        title="Join the narrative"
+        subtitle="Create your account and start writing"
       />
 
       <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
@@ -82,7 +78,7 @@ export default function RegisterPage() {
         <div className="grid grid-cols-2 gap-3">
           <Input
             label="First name"
-            placeholder="John"
+            placeholder="Jane"
             value={form.firstName}
             onChange={set("firstName")}
             error={errors.firstName}
@@ -119,7 +115,6 @@ export default function RegisterPage() {
           onChange={set("password")}
           error={errors.password}
           disabled={loading}
-          hint="Must be at least 8 characters"
         />
 
         <Input
@@ -133,17 +128,14 @@ export default function RegisterPage() {
           disabled={loading}
         />
 
-        <Button type="submit" loading={loading} fullWidth size="lg">
+        <Button type="submit" loading={loading} fullWidth size="lg" className="mt-2">
           {loading ? "Creating account..." : "Create account"}
         </Button>
       </form>
 
-      <p className="mt-6 text-center text-sm text-slate-500">
+      <p className="mt-8 text-center text-sm text-[#747878] font-sans">
         Already have an account?{" "}
-        <Link
-          href="/login"
-          className="text-indigo-400 hover:text-indigo-300 font-medium transition-colors"
-        >
+        <Link href="/login" className="text-[#1b1c1c] font-semibold hover:text-[#2a676b] transition-colors">
           Sign in
         </Link>
       </p>

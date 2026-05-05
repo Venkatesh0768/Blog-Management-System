@@ -1,21 +1,27 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Manrope, Newsreader } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const manrope = Manrope({
+  variable: "--font-manrope",
   subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700", "800"],
+  display: "swap",
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const newsreader = Newsreader({
+  variable: "--font-newsreader",
   subsets: ["latin"],
+  weight: ["300", "400", "500", "600"],
+  style: ["normal", "italic"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
-  title: "BlogApp",
-  description: "A modern blog management system",
+  title: "StoryStack — Editorial Publishing",
+  description:
+    "A sanctuary for thoughtful prose and deep reading. Experience the internet's most intentional publishing environment.",
 };
 
 export default function RootLayout({
@@ -24,11 +30,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
-      <body className="min-h-full flex flex-col bg-slate-950 text-slate-100">
+    <html lang="en" className={`${manrope.variable} ${newsreader.variable}`} style={{ width: '100%', minHeight: '100vh' }}>
+      <body style={{ width: '100%', minHeight: '100vh', margin: 0, padding: 0 }} className="bg-[#fbf9f9] text-[#1b1c1c] antialiased">
         <AuthProvider>{children}</AuthProvider>
       </body>
     </html>

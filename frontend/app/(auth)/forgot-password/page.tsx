@@ -20,25 +20,15 @@ export default function ForgotPasswordPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim()) {
-      setEmailError("Email is required");
-      return;
-    }
-    if (!/\S+@\S+\.\S+/.test(email)) {
-      setEmailError("Enter a valid email address");
-      return;
-    }
+    if (!email.trim()) { setEmailError("Email is required"); return; }
+    if (!/\S+@\S+\.\S+/.test(email)) { setEmailError("Enter a valid email address"); return; }
 
     setEmailError(undefined);
     setApiError(null);
     setLoading(true);
-
     try {
       await authApi.forgotPassword(email.trim().toLowerCase());
-      // Always show success — server never reveals whether the email exists
-      setSuccess(
-        "If an account exists with that email, you will receive a reset code shortly."
-      );
+      setSuccess("If an account exists with that email, you will receive a reset code shortly.");
     } catch {
       setApiError("Something went wrong. Please try again later.");
     } finally {
@@ -49,27 +39,25 @@ export default function ForgotPasswordPage() {
   if (success) {
     return (
       <AuthCard>
-        <div className="text-center flex flex-col items-center gap-4 py-2">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-500/15 ring-1 ring-emerald-500/30">
-            <Mail size={24} className="text-emerald-400" />
+        <div className="flex flex-col items-center gap-5 py-2 text-center">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[rgba(42,103,107,0.1)] border border-[rgba(42,103,107,0.2)]">
+            <Mail size={20} className="text-[#2a676b]" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-white">Check your inbox</h1>
-            <p className="mt-2 text-sm text-slate-400">{success}</p>
+            <h2 className="text-xl font-bold text-[#1b1c1c] font-sans mb-2">Check your inbox</h2>
+            <p className="text-sm text-[#444748] font-sans leading-relaxed">{success}</p>
           </div>
           <Button
             fullWidth
             size="lg"
             onClick={() =>
-              router.push(
-                `/reset-password?email=${encodeURIComponent(email.trim().toLowerCase())}`
-              )
+              router.push(`/reset-password?email=${encodeURIComponent(email.trim().toLowerCase())}`)
             }
           >
             Enter reset code
           </Button>
-          <Link href="/login" className="text-sm text-slate-500 hover:text-slate-300 transition-colors">
-            Back to login
+          <Link href="/login" className="text-sm text-[#747878] hover:text-[#1b1c1c] font-sans transition-colors">
+            Back to sign in
           </Link>
         </div>
       </AuthCard>
@@ -92,10 +80,7 @@ export default function ForgotPasswordPage() {
           autoComplete="email"
           placeholder="you@example.com"
           value={email}
-          onChange={(e) => {
-            setEmail(e.target.value);
-            setEmailError(undefined);
-          }}
+          onChange={(e) => { setEmail(e.target.value); setEmailError(undefined); }}
           error={emailError}
           disabled={loading}
           autoFocus
@@ -106,9 +91,9 @@ export default function ForgotPasswordPage() {
         </Button>
       </form>
 
-      <p className="mt-6 text-center text-sm text-slate-500">
+      <p className="mt-6 text-center text-sm text-[#747878] font-sans">
         Remember your password?{" "}
-        <Link href="/login" className="text-indigo-400 hover:text-indigo-300 font-medium transition-colors">
+        <Link href="/login" className="text-[#1b1c1c] font-semibold hover:text-[#2a676b] transition-colors">
           Sign in
         </Link>
       </p>

@@ -6,6 +6,7 @@ import org.blog.backend.blog.dto.commentsDto.commentRequestDtos.CreateCommentReq
 import org.blog.backend.blog.dto.commentsDto.commentResponseDtos.CommentResponseDto;
 import org.blog.backend.blog.services.CommentService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
@@ -18,12 +19,12 @@ public class CommentController {
     private final CommentService commentService;
 
     // Add comment or reply
-    @PostMapping("/{userId}")
+    @PostMapping
     public ResponseEntity<CommentResponseDto> addComment(
             @Valid @RequestBody CreateCommentRequestDto dto,
-            @PathVariable UUID userId
+            Authentication authentication
     ) {
-        return ResponseEntity.ok(commentService.addComment(dto, userId));
+        return ResponseEntity.ok(commentService.addComment(dto, authentication.getName()));
     }
 
     @GetMapping("/post/{postId}")

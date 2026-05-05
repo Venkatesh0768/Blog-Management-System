@@ -12,16 +12,12 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
   ({ label, error, hint, type, className = "", ...props }, ref) => {
     const [showPassword, setShowPassword] = useState(false);
     const isPassword = type === "password";
-    const resolvedType = isPassword
-      ? showPassword
-        ? "text"
-        : "password"
-      : type;
+    const resolvedType = isPassword ? (showPassword ? "text" : "password") : type;
 
     return (
       <div className="flex flex-col gap-1.5">
         {label && (
-          <label className="text-sm font-medium text-slate-300">
+          <label className="text-sm font-medium text-[#1b1c1c] font-sans">
             {label}
           </label>
         )}
@@ -44,20 +40,20 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
               type="button"
               tabIndex={-1}
               onClick={() => setShowPassword((v) => !v)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-[#747878] hover:text-[#1b1c1c] transition-colors"
               aria-label={showPassword ? "Hide password" : "Show password"}
             >
-              {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
             </button>
           )}
         </div>
         {error && (
-          <p className="text-xs text-red-400 flex items-center gap-1">
-            <span>⚠</span> {error}
+          <p className="text-xs text-[#ba1a1a] flex items-center gap-1 font-sans">
+            <span aria-hidden>⚠</span> {error}
           </p>
         )}
         {hint && !error && (
-          <p className="text-xs text-slate-500">{hint}</p>
+          <p className="text-xs text-[#747878] font-sans">{hint}</p>
         )}
       </div>
     );

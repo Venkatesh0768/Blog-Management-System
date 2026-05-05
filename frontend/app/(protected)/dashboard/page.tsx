@@ -1,199 +1,91 @@
 "use client";
 import React from "react";
-import { Navbar } from "@/components/layout/Navbar";
 import { useAuth } from "@/context/AuthContext";
-import { isAdmin, displayName, initials, roleBadgeClass, roleLabel } from "@/lib/utils/roles";
-import { Shield, User, Clock, Mail, CheckCircle2, Calendar } from "lucide-react";
 import Link from "next/link";
-import type { RoleType } from "@/types/auth.types";
+import { useEffect, useState } from "react";
+import { getPublicPosts } from "@/lib/api/post.api";
+import { Page, PostResponseDto } from "@/types/blog.types";
+import PostCard from "@/components/blog/PostCard";
+import { PenLine } from "lucide-react";
 
 export default function DashboardPage() {
-  const { user, status } = useAuth();
+  const { user } = useAuth();
+  const [postsPage, setPostsPage] = useState<Page<PostResponseDto> | null>(null);
+  const [loadingPosts, setLoadingPosts] = useState(true);
 
-  if (status === "loading") return <LoadingState />;
+  useEffect(() => {
+    fetchPosts();
+  }, []);
 
-  const admin = isAdmin(user);
+  const fetchPosts = async () => {
+    try {
+      setLoadingPosts(true);
+      const data = await getPublicPosts(0, 12, "createdAt", "desc");
+      setPostsPage(data);
+    } catch (err) {
+      console.error("Failed to load posts", err);
+    } finally {
+      setLoadingPosts(false);
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-slate-950">
-      <Navbar />
-      <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6">
-        {/* Welcome */}
-        <div className="fade-in mb-8">
-          <h1 className="text-3xl font-bold text-white">
-            Welcome back,{" "}
-            <span className="text-indigo-400">{user?.firstName}</span> 👋
-          </h1>
-          <p className="mt-1.5 text-slate-400">
-            Here&apos;s a summary of your account.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 fade-in">
-          {/* Profile card */}
-          <div className="glass-card p-6 sm:col-span-2">
-            <div className="flex items-center gap-4">
-              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-indigo-600/25 ring-1 ring-indigo-500/40 text-2xl font-bold text-indigo-300">
-                {initials(user)}
-              </div>
-              <div className="min-w-0">
-                <h2 className="text-lg font-semibold text-white truncate">
-                  {displayName(user)}
-                </h2>
-                <p className="text-sm text-slate-400 truncate">{user?.email}</p>
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {user?.roles.map((r) => (
-                    <span
-                      key={r}
-                      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${roleBadgeClass(r as RoleType)}`}
-                    >
-                      {r === "ROLE_ADMIN" && <Shield size={10} />}
-                      {roleLabel(r as RoleType)}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </div>
-            <div className="mt-5 grid grid-cols-2 gap-3 border-t border-white/8 pt-5 text-sm">
-              <InfoRow icon={<Mail size={14} />} label="Email" value={user?.email ?? ""} />
-              <InfoRow
-                icon={<CheckCircle2 size={14} />}
-                label="Email verified"
-                value={user?.emailVerified ? "Yes" : "No"}
-              />
-              <InfoRow
-                icon={<User size={14} />}
-                label="Sign-in method"
-                value={
-                  user?.provider === "local"
-                    ? "Email & Password"
-                    : user?.provider ?? "—"
-                }
-              />
-              <InfoRow
-                icon={<Clock size={14} />}
-                label="Last login"
-                value={
-                  user?.lastLoginAt
-                    ? new Date(user.lastLoginAt).toLocaleDateString()
-                    : "—"
-                }
-              />
-              <InfoRow
-                icon={<Calendar size={14} />}
-                label="Member since"
-                value={
-                  user?.createdAt
-                    ? new Date(user.createdAt).toLocaleDateString()
-                    : "—"
-                }
-              />
-            </div>
+  <div className="w-full flex justify-center">
+    <div className="w-full max-w-6xl px-6 py-10">
+      
+      {/* Header */}
+      <div className="mb-10 pb-8 border-b border-gray-200">
+        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6">
+          
+          {/* Left */}
+          <div className="max-w-xl">
+            <h1 className="text-3xl font-semibold text-gray-900 tracking-tight mb-2">
+              Story Library
+            </h1>
+            <p className="text-sm text-gray-500 leading-relaxed">
+              Curate and manage your collection of narratives. From raw drafts to published features, your complete editorial archive is preserved here.
+            </p>
           </div>
 
-          {/* Quick actions */}
-          <div className="flex flex-col gap-4">
-            <QuickAction
-              href="/profile"
-              icon={<User size={20} />}
-              title="Edit Profile"
-              desc="Update your name and avatar"
-              color="indigo"
-            />
-            {admin && (
-              <QuickAction
-                href="/admin"
-                icon={<Shield size={20} />}
-                title="Admin Panel"
-                desc="Manage users and roles"
-                color="rose"
-              />
-            )}
-            <QuickAction
-              href="/profile#security"
-              icon={<CheckCircle2 size={20} />}
-              title="Security"
-              desc="Change password, manage sessions"
-              color="emerald"
-            />
-          </div>
+          {/* Right Button */}
+          <Link
+            href="/dashboard/posts/new"
+            className="self-start sm:self-auto inline-flex items-center gap-2 px-4 py-2 bg-black text-white text-sm font-medium rounded-md hover:bg-gray-800 transition"
+          >
+            <PenLine size={14} />
+            New story
+          </Link>
         </div>
+      </div>
 
-        {/* Security notice */}
-        {!user?.emailVerified && (
-          <div className="mt-4 rounded-xl border border-amber-500/25 bg-amber-500/8 px-4 py-3 text-sm text-amber-300 fade-in">
-            ⚠️ Your email is not verified.{" "}
+      {/* Posts */}
+      <div>
+        {loadingPosts ? (
+          <div className="flex justify-center py-20">
+            <div className="h-6 w-6 rounded-full border-2 border-gray-400 border-t-transparent animate-spin" />
+          </div>
+        ) : postsPage?.content.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-24 text-center">
+            <p className="text-gray-500 text-sm mb-6">
+              No stories published yet.
+            </p>
             <Link
-              href={`/verify-otp?email=${encodeURIComponent(user?.email ?? "")}`}
-              className="underline font-medium"
+              href="/dashboard/posts/new"
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-black text-white text-sm font-medium rounded-md hover:bg-gray-800 transition"
             >
-              Verify now
+              <PenLine size={14} />
+              Write your first story
             </Link>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 justify-center">
+            {postsPage?.content.map((post) => (
+              <PostCard key={post.id} post={post} />
+            ))}
           </div>
         )}
       </div>
     </div>
-  );
-}
-
-function InfoRow({
-  icon,
-  label,
-  value,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className="flex items-center gap-2">
-      <span className="text-slate-500">{icon}</span>
-      <div>
-        <p className="text-xs text-slate-500">{label}</p>
-        <p className="text-slate-200 font-medium">{value}</p>
-      </div>
-    </div>
-  );
-}
-
-function QuickAction({
-  href,
-  icon,
-  title,
-  desc,
-  color,
-}: {
-  href: string;
-  icon: React.ReactNode;
-  title: string;
-  desc: string;
-  color: "indigo" | "rose" | "emerald";
-}) {
-  const colorMap = {
-    indigo: "bg-indigo-600/15 text-indigo-400 group-hover:bg-indigo-600/25",
-    rose: "bg-rose-600/15 text-rose-400 group-hover:bg-rose-600/25",
-    emerald: "bg-emerald-600/15 text-emerald-400 group-hover:bg-emerald-600/25",
-  };
-  return (
-    <Link
-      href={href}
-      className="glass-card group flex items-center gap-3 p-4 transition-all hover:border-white/15"
-    >
-      <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-colors ${colorMap[color]}`}>
-        {icon}
-      </div>
-      <div>
-        <p className="text-sm font-semibold text-white">{title}</p>
-        <p className="text-xs text-slate-500">{desc}</p>
-      </div>
-    </Link>
-  );
-}
-
-function LoadingState() {
-  return (
-    <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-      <div className="h-8 w-8 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin" />
-    </div>
-  );
+  </div>
+);
 }

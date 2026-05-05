@@ -8,6 +8,8 @@ import org.blog.backend.auth.dto.ApiResponse;
 import org.blog.backend.auth.dto.AssignRolesRequest;
 import org.blog.backend.auth.dto.UserDTO;
 import org.blog.backend.auth.service.AdminUserService;
+import org.blog.backend.blog.dto.PostDtos.PostResponseDtos.PostResponseDto;
+import org.blog.backend.blog.services.PostService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
@@ -27,6 +29,7 @@ import java.util.UUID;
 public class AdminController {
 
     private final AdminUserService adminUserService;
+    private final PostService postService;
 
 
     @Operation(summary = "Get all users (paginated)")
@@ -76,5 +79,30 @@ public class AdminController {
     public ResponseEntity<ApiResponse> getAuditLogs() {
         // Stub implementation for now
         return ResponseEntity.ok(new ApiResponse(true, "Audit logs", Collections.emptyList()));
+    }
+
+    // ─── Post Management ──────────────────────────────────────────────────────
+
+    @Operation(summary = "Get all posts (paginated) — admin view")
+    @GetMapping("/posts")
+    public ResponseEntity<Page<PostResponseDto>> getAllPosts(
+            @PageableDefault(size = 20, sort = "createdAt") Pageable pageable) {
+        return ResponseEntity.ok(postService.getAllLatestPosts(
+                pageable.getPageNumber(),
+                pageable.getPageSize(),
+                pageable.getSort().isSorted()
+                        ? pageable.getSort().iterator().next().getProperty()
+                        : "createdAt",
+                pageable.getSort().isSorted() && pageable.getSort().iterator().next().isAscending()
+                        ? "asc"
+                        : "desc"
+        ));
+    }
+
+    @Operation(summary = "Delete any post by ID — admin override")
+    @DeleteMapping("/posts/{postId}")
+    public ResponseEntity<ApiResponse> deletePost(@PathVariable UUID postId) {
+        postService.deletePost(postId);
+        return ResponseEntity.ok(new ApiResponse(true, "Post deleted successfully", null));
     }
 }

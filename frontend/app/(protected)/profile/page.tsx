@@ -1,6 +1,5 @@
 "use client";
 import React, { useState } from "react";
-import { Navbar } from "@/components/layout/Navbar";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Alert } from "@/components/ui/Alert";
@@ -15,7 +14,7 @@ export default function ProfilePage() {
   const { user, refreshUser, logout } = useAuth();
   const router = useRouter();
 
-  // ── Profile section ──────────────────────────────────────────────────────
+  // ── Profile ──────────────────────────────────────────────────────────────
   const [profile, setProfile] = useState({
     firstName: user?.firstName ?? "",
     lastName: user?.lastName ?? "",
@@ -46,7 +45,7 @@ export default function ProfilePage() {
     }
   };
 
-  // ── Password section ─────────────────────────────────────────────────────
+  // ── Password ─────────────────────────────────────────────────────────────
   const [pwForm, setPwForm] = useState({
     currentPassword: "",
     newPassword: "",
@@ -75,7 +74,6 @@ export default function ProfilePage() {
         currentPassword: pwForm.currentPassword,
         newPassword: pwForm.newPassword,
       });
-      // All sessions revoked — force logout
       await logout();
       router.push("/login");
     } catch (err) {
@@ -87,18 +85,17 @@ export default function ProfilePage() {
     }
   };
 
-  // ── Sessions section ──────────────────────────────────────────────────────
+  // ── Sessions ──────────────────────────────────────────────────────────────
   const [sessionLoading, setSessionLoading] = useState(false);
 
   const handleLogoutAll = async () => {
-    if (!confirm("This will log you out of all devices. Continue?")) return;
+    if (!confirm("This will sign you out of all devices. Continue?")) return;
     setSessionLoading(true);
     try {
       await userApi.logoutAllDevices();
       await logout();
       router.push("/login");
     } catch {
-      // still redirect
       await logout();
       router.push("/login");
     } finally {
@@ -107,144 +104,152 @@ export default function ProfilePage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950">
-      <Navbar />
-      <div className="mx-auto max-w-2xl px-4 py-10 sm:px-6 flex flex-col gap-6 fade-in">
-        <h1 className="text-2xl font-bold text-white">Account Settings</h1>
+    <div className="mx-auto max-w-2xl px-6 sm:px-8 py-10 flex flex-col gap-8 fade-in">
+      {/* Header */}
+      <div className="pb-6 border-b border-[#e9e8e7]">
+        <p className="label-caps text-[#2a676b] mb-2">Account</p>
+        <h1 className="text-3xl font-bold text-[#1b1c1c] font-sans tracking-tight">
+          Settings
+        </h1>
+        <p className="text-sm text-[#747878] font-sans mt-1">
+          Manage your profile and security preferences.
+        </p>
+      </div>
 
-        {/* ── Profile ── */}
-        <section id="profile" className="glass-card p-6">
-          <div className="flex items-center gap-3 mb-5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-600/20 text-indigo-400">
-              <User size={18} />
-            </div>
-            <div>
-              <h2 className="font-semibold text-white">Profile</h2>
-              <p className="text-xs text-slate-500">Update your display name</p>
-            </div>
+      {/* ── Profile ── */}
+      <section className="story-card">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="flex h-9 w-9 items-center justify-center bg-[#efeded] border border-[#c4c7c7] rounded text-[#444748]">
+            <User size={16} />
+          </div>
+          <div>
+            <h2 className="font-semibold text-[#1b1c1c] font-sans">Profile</h2>
+            <p className="text-xs text-[#747878] font-sans">Update your display name</p>
+          </div>
+        </div>
+
+        {/* Avatar */}
+        <div className="flex items-center gap-4 mb-6 pb-6 border-b border-[#e9e8e7]">
+          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#efeded] border border-[#c4c7c7] text-xl font-bold text-[#1b1c1c] font-sans">
+            {initials(user)}
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-[#1b1c1c] font-sans">{user?.email}</p>
+            <p className="text-xs text-[#747878] font-sans capitalize mt-0.5">
+              {user?.provider} account
+            </p>
+          </div>
+        </div>
+
+        <form onSubmit={handleProfileSave} className="flex flex-col gap-5">
+          <Alert variant="success" message={profileSuccess} />
+          <Alert variant="error" message={profileError} />
+
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="First name"
+              value={profile.firstName}
+              onChange={(e) => setProfile((p) => ({ ...p, firstName: e.target.value }))}
+              disabled={profileLoading}
+            />
+            <Input
+              label="Last name"
+              value={profile.lastName}
+              onChange={(e) => setProfile((p) => ({ ...p, lastName: e.target.value }))}
+              disabled={profileLoading}
+            />
           </div>
 
-          {/* Avatar preview */}
-          <div className="flex items-center gap-3 mb-5">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-600/25 ring-1 ring-indigo-500/40 text-xl font-bold text-indigo-300">
-              {initials(user)}
-            </div>
-            <div>
-              <p className="text-sm font-medium text-white">{user?.email}</p>
-              <p className="text-xs text-slate-500 capitalize">{user?.provider} account</p>
-            </div>
-          </div>
-
-          <form onSubmit={handleProfileSave} className="flex flex-col gap-4">
-            <Alert variant="success" message={profileSuccess} />
-            <Alert variant="error" message={profileError} />
-
-            <div className="grid grid-cols-2 gap-3">
-              <Input
-                label="First name"
-                value={profile.firstName}
-                onChange={(e) => setProfile((p) => ({ ...p, firstName: e.target.value }))}
-                disabled={profileLoading}
-              />
-              <Input
-                label="Last name"
-                value={profile.lastName}
-                onChange={(e) => setProfile((p) => ({ ...p, lastName: e.target.value }))}
-                disabled={profileLoading}
-              />
-            </div>
-
-            <Button type="submit" loading={profileLoading} className="self-end">
+          <div className="flex justify-end">
+            <Button type="submit" loading={profileLoading} size="sm">
               Save changes
             </Button>
-          </form>
-        </section>
-
-        {/* ── Security ── */}
-        <section id="security" className="glass-card p-6">
-          <div className="flex items-center gap-3 mb-5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-600/20 text-amber-400">
-              <Lock size={18} />
-            </div>
-            <div>
-              <h2 className="font-semibold text-white">Security</h2>
-              <p className="text-xs text-slate-500">Change your password</p>
-            </div>
           </div>
+        </form>
+      </section>
 
-          {user?.provider !== "local" ? (
-            <p className="text-sm text-slate-400 bg-white/4 rounded-xl p-3">
-              You signed in with{" "}
-              <span className="font-medium text-white capitalize">{user?.provider}</span>.
-              Password management is handled by your OAuth provider.
-            </p>
-          ) : (
-            <form onSubmit={handleChangePassword} className="flex flex-col gap-4">
-              <Alert variant="success" message={pwSuccess} />
-              <Alert variant="error" message={pwError} />
+      {/* ── Security ── */}
+      <section className="story-card">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="flex h-9 w-9 items-center justify-center bg-[#efeded] border border-[#c4c7c7] rounded text-[#444748]">
+            <Lock size={16} />
+          </div>
+          <div>
+            <h2 className="font-semibold text-[#1b1c1c] font-sans">Security</h2>
+            <p className="text-xs text-[#747878] font-sans">Change your password</p>
+          </div>
+        </div>
 
-              <Input
-                label="Current password"
-                type="password"
-                placeholder="••••••••"
-                value={pwForm.currentPassword}
-                onChange={(e) => setPwForm((f) => ({ ...f, currentPassword: e.target.value }))}
-                error={pwErrors.currentPassword}
-                disabled={pwLoading}
-              />
-              <Input
-                label="New password"
-                type="password"
-                placeholder="Min. 8 characters"
-                value={pwForm.newPassword}
-                onChange={(e) => setPwForm((f) => ({ ...f, newPassword: e.target.value }))}
-                error={pwErrors.newPassword}
-                disabled={pwLoading}
-              />
-              <Input
-                label="Confirm new password"
-                type="password"
-                placeholder="Repeat new password"
-                value={pwForm.confirm}
-                onChange={(e) => setPwForm((f) => ({ ...f, confirm: e.target.value }))}
-                error={pwErrors.confirm}
-                disabled={pwLoading}
-              />
-              <Alert
-                variant="warning"
-                message="Changing your password will log you out of all devices."
-              />
-              <Button type="submit" loading={pwLoading} variant="danger" className="self-end">
+        {user?.provider !== "local" ? (
+          <p className="text-sm text-[#444748] font-sans bg-[#f5f3f3] border border-[#c4c7c7] rounded px-4 py-3">
+            You signed in with{" "}
+            <span className="font-semibold text-[#1b1c1c] capitalize">{user?.provider}</span>.
+            Password management is handled by your OAuth provider.
+          </p>
+        ) : (
+          <form onSubmit={handleChangePassword} className="flex flex-col gap-5">
+            <Alert variant="success" message={pwSuccess} />
+            <Alert variant="error" message={pwError} />
+
+            <Input
+              label="Current password"
+              type="password"
+              placeholder="••••••••"
+              value={pwForm.currentPassword}
+              onChange={(e) => setPwForm((f) => ({ ...f, currentPassword: e.target.value }))}
+              error={pwErrors.currentPassword}
+              disabled={pwLoading}
+            />
+            <Input
+              label="New password"
+              type="password"
+              placeholder="Min. 8 characters"
+              value={pwForm.newPassword}
+              onChange={(e) => setPwForm((f) => ({ ...f, newPassword: e.target.value }))}
+              error={pwErrors.newPassword}
+              disabled={pwLoading}
+            />
+            <Input
+              label="Confirm new password"
+              type="password"
+              placeholder="Repeat new password"
+              value={pwForm.confirm}
+              onChange={(e) => setPwForm((f) => ({ ...f, confirm: e.target.value }))}
+              error={pwErrors.confirm}
+              disabled={pwLoading}
+            />
+            <Alert
+              variant="warning"
+              message="Changing your password will sign you out of all devices."
+            />
+            <div className="flex justify-end">
+              <Button type="submit" loading={pwLoading} variant="danger" size="sm">
                 Change password
               </Button>
-            </form>
-          )}
-        </section>
+            </div>
+          </form>
+        )}
+      </section>
 
-        {/* ── Sessions ── */}
-        <section className="glass-card p-6">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-rose-600/20 text-rose-400">
-              <LogOut size={18} />
-            </div>
-            <div>
-              <h2 className="font-semibold text-white">Sessions</h2>
-              <p className="text-xs text-slate-500">Revoke all active sessions</p>
-            </div>
+      {/* ── Sessions ── */}
+      <section className="story-card border-[#ba1a1a]/20">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="flex h-9 w-9 items-center justify-center bg-[#ffdad6]/40 border border-[#ba1a1a]/20 rounded text-[#ba1a1a]">
+            <LogOut size={16} />
           </div>
-          <p className="mb-4 text-sm text-slate-400">
-            Sign out from all devices — including this one. You will need to log in again.
-          </p>
-          <Button
-            variant="danger"
-            onClick={handleLogoutAll}
-            loading={sessionLoading}
-          >
-            <LogOut size={15} />
-            Logout from all devices
-          </Button>
-        </section>
-      </div>
+          <div>
+            <h2 className="font-semibold text-[#1b1c1c] font-sans">Sessions</h2>
+            <p className="text-xs text-[#747878] font-sans">Revoke all active sessions</p>
+          </div>
+        </div>
+        <p className="mb-5 text-sm text-[#444748] font-sans leading-relaxed">
+          Sign out from all devices — including this one. You will need to sign in again.
+        </p>
+        <Button variant="danger" onClick={handleLogoutAll} loading={sessionLoading} size="sm">
+          <LogOut size={14} />
+          Sign out all devices
+        </Button>
+      </section>
     </div>
   );
 }
