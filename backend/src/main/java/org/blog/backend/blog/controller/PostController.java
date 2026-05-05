@@ -2,12 +2,14 @@ package org.blog.backend.blog.controller;
 
 
 import lombok.RequiredArgsConstructor;
+import jakarta.validation.Valid;
 import org.blog.backend.blog.dto.PostDtos.PostRequestDtos.CreatePostRequestDto;
 import org.blog.backend.blog.dto.PostDtos.PostRequestDtos.UpdatePostRequestDto;
 import org.blog.backend.blog.dto.PostDtos.PostResponseDtos.PostResponseDto;
 import org.blog.backend.blog.services.PostService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -20,22 +22,22 @@ public class PostController {
 
     private final PostService postService;
 
-    @PostMapping("/{id}/create")
+    @PostMapping("/create")
     public ResponseEntity<PostResponseDto> createPost(
-            @RequestBody CreatePostRequestDto requestDto,
-            @PathVariable UUID id
+            @Valid @RequestBody CreatePostRequestDto requestDto,
+            Authentication authentication
     ) {
-        return new ResponseEntity<>(postService.createPost(requestDto, id), HttpStatus.CREATED);
+        return new ResponseEntity<>(postService.createPost(requestDto, authentication.getName()), HttpStatus.CREATED);
     }
 
 
-    @GetMapping("/{id}")
-    public ResponseEntity<List<PostResponseDto>> getAllPosts(@PathVariable UUID id) {
-        return new ResponseEntity<>(postService.getPostsOfUser(id), HttpStatus.OK);
+    @GetMapping("/me")
+    public ResponseEntity<List<PostResponseDto>> getAllPosts(Authentication authentication) {
+        return new ResponseEntity<>(postService.getPostsOfUser(authentication.getName()), HttpStatus.OK);
     }
 
     @PatchMapping("/{postId}")
-    public ResponseEntity<PostResponseDto> updatePost(@RequestBody UpdatePostRequestDto requestDto, @PathVariable UUID postId) {
+    public ResponseEntity<PostResponseDto> updatePost(@Valid @RequestBody UpdatePostRequestDto requestDto, @PathVariable UUID postId) {
         return new ResponseEntity<>(postService.updatePost(requestDto, postId), HttpStatus.OK);
     }
 

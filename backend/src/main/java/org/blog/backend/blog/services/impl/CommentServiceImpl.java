@@ -53,7 +53,7 @@ public class CommentServiceImpl  implements CommentService {
                 .build();
 
         Comment savedComment = commentRepository.save(comment);
-        return null;
+        return mapToResponse(savedComment, false);
     }
 
     @Override

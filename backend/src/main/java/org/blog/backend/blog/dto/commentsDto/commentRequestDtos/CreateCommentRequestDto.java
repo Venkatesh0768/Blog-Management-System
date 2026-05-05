@@ -2,6 +2,7 @@ package org.blog.backend.blog.dto.commentsDto.commentRequestDtos;
 
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -20,7 +21,7 @@ public class CreateCommentRequestDto {
     @Size(min = 1, max = 1000)
     private String content;
 
-    @NotBlank(message = "Post id  can not be Null")
+    @NotNull(message = "Post id can not be null")
     private UUID postId;
 
     // null = top-level comment, otherwise reply to this comment

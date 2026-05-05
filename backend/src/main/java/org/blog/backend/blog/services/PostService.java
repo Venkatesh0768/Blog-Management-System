@@ -8,11 +8,11 @@ import java.util.List;
 import java.util.UUID;
 
 public interface PostService {
-    PostResponseDto createPost(CreatePostRequestDto requestDto , UUID uuid);
+    PostResponseDto createPost(CreatePostRequestDto requestDto , String email);
 
     List<PostResponseDto> getAllPost();
 
-    List<PostResponseDto> getPostsOfUser(UUID id);
+    List<PostResponseDto> getPostsOfUser(String email);
 
     PostResponseDto getPostById(UUID id);
 

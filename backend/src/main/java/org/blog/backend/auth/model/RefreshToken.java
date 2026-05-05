@@ -30,6 +30,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+
 public class RefreshToken {
 
     @Id
@@ -72,4 +73,6 @@ public class RefreshToken {
             columnDefinition = "datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6)"
     )
     private LocalDateTime createdAt;
+
+
 }

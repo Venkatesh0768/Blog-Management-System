@@ -1,0 +1,66 @@
+spring:
+  application:
+    name: backend-test
+
+  datasource:
+    url: jdbc:h2:mem:testdb;MODE=MySQL
+
+    username: sa
+    password:
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+        format_sql: true
+
+  data:
+    redis:
+      repositories:
+        enabled: false
+
+  mail:
+    host: localhost
+    port: 2525
+    username: noreply@test.local
+    password: test-password
+
+jwt:
+  secret: ${JWT_SECRET:MzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTI=}
+  expiration: ${JWT_EXPIRATION:86400000}
+  refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800000}
+
+otp:
+  expiration: ${OTP_EXPIRATION:300000}
+  length: ${OTP_LENGTH:6}
+
+cors:
+  allowed-origins: http://localhost
+
+app:
+  frontend-url: http://localhost
+  base-url: http://localhost
+  short-url-ttl: 86400
+
+  cookie:
+    secure: false
+    same-site: Lax
+    domain: ""
+    max-age-seconds: 604800
+    path: /
+
+  scheduler:
+    token-cleanup-cron: "0 0 3 * * *"
+
+admin:
+  email: test@admin.com
+  password: test123
+  first-name: Test
+  last-name: Admin
+
+management:
+  health:
+    mail:
+      enabled: false

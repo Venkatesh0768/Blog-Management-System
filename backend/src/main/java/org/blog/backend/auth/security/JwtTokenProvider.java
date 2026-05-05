@@ -7,12 +7,16 @@ import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.blog.backend.auth.model.User;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.env.Environment;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 
 import javax.crypto.SecretKey;
+import java.security.SecureRandom;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.Date;
 import java.util.List;
@@ -48,10 +52,18 @@ public class JwtTokenProvider {
 
     private static final int MINIMUM_KEY_BYTES = 32; // 256 bits
 
-    @Value("${jwt.secret}")
+    private static final int GENERATED_KEY_BYTES = 64;
+
+    private final Environment environment;
+
+    public JwtTokenProvider(Environment environment) {
+        this.environment = environment;
+    }
+
+    @Value("${jwt.secret:}")
     private String jwtSecretBase64;
 
-    @Value("${jwt.expiration}")
+    @Value("${jwt.expiration:86400000}")
     private long jwtExpirationMs;
 
     private SecretKey signingKey;
@@ -74,6 +86,11 @@ public class JwtTokenProvider {
      */
     @PostConstruct
     void initSigningKey() {
+        if (!StringUtils.hasText(jwtSecretBase64)) {
+            initializeMissingSecretFallback();
+            return;
+        }
+
         byte[] keyBytes;
 
         try {
@@ -94,6 +111,24 @@ public class JwtTokenProvider {
         }
 
         this.signingKey = Keys.hmacShaKeyFor(keyBytes);
+    }
+
+    private void initializeMissingSecretFallback() {
+        if (isProdProfileActive()) {
+            throw new IllegalStateException(
+                    "Missing JWT signing secret: configure 'jwt.secret' (or env JWT_SECRET) in production.");
+        }
+
+        byte[] generatedKey = new byte[GENERATED_KEY_BYTES];
+        new SecureRandom().nextBytes(generatedKey);
+        this.signingKey = Keys.hmacShaKeyFor(generatedKey);
+        log.warn("jwt.secret is not configured; generated an ephemeral signing key for non-production profile. " +
+                 "Tokens will be invalidated on every restart.");
+    }
+
+    private boolean isProdProfileActive() {
+        return Arrays.stream(environment.getActiveProfiles())
+                .anyMatch(profile -> "prod".equalsIgnoreCase(profile) || "production".equalsIgnoreCase(profile));
     }
 
     // ─── Token generation ────────────────────────────────────────────────────

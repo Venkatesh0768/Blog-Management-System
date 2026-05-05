@@ -1,12 +1,14 @@
 package org.blog.backend.blog.services.impl;
 
 import lombok.RequiredArgsConstructor;
+import org.blog.backend.auth.exception.EmailNotVerifiedException;
 import org.blog.backend.auth.exception.UserNotFoundException;
 import org.blog.backend.auth.model.User;
 import org.blog.backend.auth.repository.UserRepository;
 import org.blog.backend.blog.dto.PostDtos.PostRequestDtos.CreatePostRequestDto;
 import org.blog.backend.blog.dto.PostDtos.PostRequestDtos.UpdatePostRequestDto;
 import org.blog.backend.blog.dto.PostDtos.PostResponseDtos.PostResponseDto;
+import org.blog.backend.blog.exception.EmailNotFoundException;
 import org.blog.backend.blog.exception.PostNotFoundException;
 
 import org.blog.backend.blog.model.Comment;
@@ -14,6 +16,7 @@ import org.blog.backend.blog.model.Post;
 import org.blog.backend.blog.model.PostImages;
 import org.blog.backend.blog.repository.PostRepository;
 import org.blog.backend.blog.services.PostService;
+import org.springframework.security.authentication.DisabledException;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -29,14 +32,24 @@ public class PostServiceImpl implements PostService {
 
 
     @Override
-    public PostResponseDto createPost(CreatePostRequestDto requestDto, UUID uuid) {
-        User user = userRepository.findById(uuid)
+    public PostResponseDto createPost(CreatePostRequestDto requestDto, String email) {
+        User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new UserNotFoundException("User Not Found By This Id"));
 
+
+        if(!user.isEnabled()){
+            throw new DisabledException("User is not Enable");
+        }
+
+        if(!user.isEmailVerified()){
+            throw new EmailNotVerifiedException("The Email Is not Verified");
+        }
+
+        String normalizedTitle = requestDto.getTitle() != null ? requestDto.getTitle().trim() : "";
         Post post = Post.builder()
-                .title(requestDto.getTitle())
+                .title(normalizedTitle)
                 .content(requestDto.getContent())
-                .slug(generateSlug(requestDto.getTitle()))
+                .slug(generateSlug(normalizedTitle))
                 .postStatus(requestDto.getPostStatus())
                 .user(user)
                 .build();
@@ -53,7 +66,7 @@ public class PostServiceImpl implements PostService {
             );
         }
 
-        if (requestDto.getPrimaryImage() != null) {
+        if (requestDto.getSecondaryImages() != null) {
             for (String url : requestDto.getSecondaryImages()) {
                 images.add(
                         PostImages.builder()
@@ -78,12 +91,11 @@ public class PostServiceImpl implements PostService {
     }
 
     @Override
-    public List<PostResponseDto> getPostsOfUser(UUID id) {
-        if (!userRepository.existsById(id)) {
-            throw new UserNotFoundException("User not found");
-        }
+    public List<PostResponseDto> getPostsOfUser(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new UserNotFoundException("User Not Found By This Id"));
 
-        List<Post> posts = postRepository.findByUserId(id);
+        List<Post> posts = postRepository.findByUserId(user.getId());
         return posts.stream().map(this::mapToResponse).toList();
     }
 
@@ -101,6 +113,7 @@ public class PostServiceImpl implements PostService {
                 .orElseThrow(() -> new PostNotFoundException("The post is not found"));
         if (requestDto.getTitle() != null) {
             post.setTitle(requestDto.getTitle().trim());
+            post.setSlug(generateSlug(post.getTitle()));
         }
 
         // 4. Update content
@@ -160,6 +173,9 @@ public class PostServiceImpl implements PostService {
     }
 
     private String generateSlug(String title) {
-        return title.toLowerCase().replaceAll("[^a-z0-9]+", "-");
+        return title.toLowerCase()
+                .trim()
+                .replaceAll("[^a-z0-9]+", "-")
+                .replaceAll("(^-|-$)", "");
     }
 }

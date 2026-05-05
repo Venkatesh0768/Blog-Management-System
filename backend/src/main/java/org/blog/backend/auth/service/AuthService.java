@@ -3,7 +3,10 @@ package org.blog.backend.auth.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.blog.backend.auth.dto.*;
-import org.blog.backend.auth.exception.*;
+import org.blog.backend.auth.exception.AccountLockedException;
+import org.blog.backend.auth.exception.EmailAlreadyExistsException;
+import org.blog.backend.auth.exception.EmailNotVerifiedException;
+import org.blog.backend.auth.exception.UserNotFoundException;
 import org.blog.backend.auth.model.RefreshToken;
 import org.blog.backend.auth.model.Role;
 import org.blog.backend.auth.model.RoleType;
@@ -49,17 +52,16 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class AuthService {
 
-    private static final int MAX_FAILED_ATTEMPTS  = 5;
+    private static final int MAX_FAILED_ATTEMPTS = 5;
     private static final int LOCK_DURATION_MINUTES = 15;
 
-    private final UserRepository       userRepository;
-    private final RoleRepository       roleRepository;
-    private final PasswordEncoder      passwordEncoder;
+    private final UserRepository userRepository;
+    private final RoleRepository roleRepository;
+    private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
-    private final JwtTokenProvider     tokenProvider;
-    private final EmailService         emailService;
-    private final OTPService           otpService;
-    private final RefreshTokenService  refreshTokenService;
+    private final JwtTokenProvider tokenProvider;
+    private final OTPService otpService;
+    private final RefreshTokenService refreshTokenService;
 
     @Value("${jwt.expiration}")
     private long jwtExpirationMs;
@@ -111,7 +113,7 @@ public class AuthService {
      * can place it in an HttpOnly cookie — it is deliberately absent from the
      * response body ({@link AuthResponse#getRefreshToken()} is not serialized).</p>
      *
-     * @param request   validated login payload
+     * @param request    validated login payload
      * @param deviceInfo truncated User-Agent from the request
      * @return access token + user info + raw refresh token for cookie
      */
@@ -126,7 +128,7 @@ public class AuthService {
                     LocalDateTime.now(), user.getAccountLockedUntil()).toMinutes() + 1;
             throw new AccountLockedException(
                     "Account temporarily locked due to too many failed attempts. " +
-                    "Try again in " + minutesLeft + " minute(s).");
+                            "Try again in " + minutesLeft + " minute(s).");
         }
 
         try {
@@ -144,7 +146,7 @@ public class AuthService {
                 throw new EmailNotVerifiedException("Please verify your email before logging in");
             }
 
-            String accessToken   = tokenProvider.generateToken(authentication);
+            String accessToken = tokenProvider.generateToken(authentication);
             RefreshToken refresh = refreshTokenService.createRefreshToken(user, deviceInfo);
 
             log.info("User logged in: {} from device='{}'", user.getEmail(), deviceInfo);
@@ -167,7 +169,7 @@ public class AuthService {
                 log.warn("Account locked for user={} after {} failed attempts", user.getEmail(), attempts);
                 throw new AccountLockedException(
                         "Account locked for " + LOCK_DURATION_MINUTES +
-                        " minutes due to too many failed login attempts.");
+                                " minutes due to too many failed login attempts.");
             }
 
             userRepository.save(user);
@@ -176,14 +178,6 @@ public class AuthService {
                     "Invalid email or password. " + remaining + " attempt(s) remaining before lockout.");
         }
     }
-
-    /**
-     * Immutable carrier for a login result: the serializable response body and
-     * the raw refresh token that the controller places in an HttpOnly cookie.
-     */
-    public record LoginResult(AuthResponse authResponse, String rawRefreshToken) {}
-
-    // ─── OTP Verification ────────────────────────────────────────────────────
 
     @Transactional
     public ApiResponse verifyOTP(OTPVerificationRequest request) {
@@ -200,6 +194,8 @@ public class AuthService {
         return new ApiResponse(true, "Email verified successfully. You can now log in.", null);
     }
 
+    // ─── OTP Verification ────────────────────────────────────────────────────
+
     @Transactional
     public ApiResponse resendOTP(String email) {
         User user = userRepository.findByEmail(email)
@@ -210,8 +206,6 @@ public class AuthService {
 
         return new ApiResponse(true, "OTP sent to " + email, null);
     }
-
-    // ─── Token Refresh ────────────────────────────────────────────────────────
 
     /**
      * Exchange a valid refresh token for a new access token.
@@ -246,7 +240,7 @@ public class AuthService {
         return new LoginResult(authResponse, newRefreshToken.getToken());
     }
 
-    // ─── Logout ───────────────────────────────────────────────────────────────
+    // ─── Token Refresh ────────────────────────────────────────────────────────
 
     /**
      * Revoke a single session (single-device logout).
@@ -258,6 +252,8 @@ public class AuthService {
         refreshTokenService.deleteByTokenValue(rawToken);
         return new ApiResponse(true, "Logged out successfully", null);
     }
+
+    // ─── Logout ───────────────────────────────────────────────────────────────
 
     /**
      * Revoke all sessions for a user (logout from all devices).
@@ -273,8 +269,6 @@ public class AuthService {
         return new ApiResponse(true, "All sessions revoked successfully", null);
     }
 
-    // ─── Password Reset ───────────────────────────────────────────────────────
-
     /**
      * Initiate password reset — always returns success to prevent user enumeration.
      */
@@ -284,6 +278,8 @@ public class AuthService {
         userRepository.findByEmail(email)
                 .ifPresent(user -> otpService.generateAndSendPasswordResetOTP(email));
     }
+
+    // ─── Password Reset ───────────────────────────────────────────────────────
 
     @Transactional
     public ApiResponse resetPassword(ResetPasswordRequest request) {
@@ -305,8 +301,6 @@ public class AuthService {
         return new ApiResponse(true, "Password reset successful. Please log in with your new password.", null);
     }
 
-    // ─── Change Password ─────────────────────────────────────────────────────
-
     @Transactional
     public ApiResponse changePassword(String email, ChangePasswordRequest request) {
         User user = userRepository.findByEmail(email)
@@ -326,7 +320,7 @@ public class AuthService {
         return new ApiResponse(true, "Password changed successfully. Please log in again.", null);
     }
 
-    // ─── Profile ─────────────────────────────────────────────────────────────
+    // ─── Change Password ─────────────────────────────────────────────────────
 
     @Transactional
     public ApiResponse updateProfile(String email, UpdateProfileRequest request) {
@@ -347,6 +341,8 @@ public class AuthService {
         return new ApiResponse(true, "Profile updated successfully", convertToUserDTO(user));
     }
 
+    // ─── Profile ─────────────────────────────────────────────────────────────
+
     /**
      * Fetch a user and return it as a {@link UserDTO}.
      * Used by controllers that need the current user's profile.
@@ -356,8 +352,6 @@ public class AuthService {
                 .orElseThrow(() -> new UserNotFoundException("User not found"));
         return convertToUserDTO(user);
     }
-
-    // ─── Shared mapper ───────────────────────────────────────────────────────
 
     public UserDTO convertToUserDTO(User user) {
         return UserDTO.builder()
@@ -375,5 +369,14 @@ public class AuthService {
                         .map(role -> role.getName().name())
                         .collect(Collectors.toSet()))
                 .build();
+    }
+
+    // ─── Shared mapper ───────────────────────────────────────────────────────
+
+    /**
+     * Immutable carrier for a login result: the serializable response body and
+     * the raw refresh token that the controller places in an HttpOnly cookie.
+     */
+    public record LoginResult(AuthResponse authResponse, String rawRefreshToken) {
     }
 }
