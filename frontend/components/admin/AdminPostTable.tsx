@@ -157,10 +157,10 @@ export function AdminPostTable({ posts, onRefresh }: AdminPostTableProps) {
             </tr>
           </thead>
           <tbody>
-            {posts.map((post) => {
+            {posts.filter((post) => post && post.id).map((post) => {
               const isConfirming = confirmId === post.id;
               const isDeleting = deletingId === post.id;
-              const excerpt = stripHtml(post.content).slice(0, 80);
+              const excerpt = stripHtml(post.content || "").slice(0, 80);
               const date = new Date(post.createdAt).toLocaleDateString("en-US", {
                 month: "short",
                 day: "numeric",

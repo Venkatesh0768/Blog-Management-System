@@ -4,16 +4,13 @@ import type { NextRequest } from "next/server";
 /**
  * Next.js Edge Middleware — Server-side route protection.
  *
- * Runs before any page renders. Checks for the refreshToken cookie as a
- * proxy signal for "is the user likely authenticated?". The actual token
- * validation happens in the API layer; this just prevents flash of
- * protected content for unauthenticated users.
+ * Only blocks unauthenticated users from accessing protected routes.
+ * We do NOT redirect authenticated users away from /login or /register —
+ * the cookie may be expired/invalid, and AuthContext handles that case
+ * client-side after a failed refresh attempt.
  *
  * Route rules:
- * - /dashboard, /profile → require auth cookie → redirect /login
- * - /admin/*             → require auth cookie → redirect /login
- *                          (ROLE_ADMIN check happens in the page component)
- * - /login, /register    → if already has cookie → redirect /dashboard
+ * - /dashboard, /profile, /admin → require refreshToken cookie → redirect /login
  */
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -24,21 +21,13 @@ export function middleware(request: NextRequest) {
     pathname.startsWith("/profile") ||
     pathname.startsWith("/admin");
 
-  const isAuthRoute =
-    pathname.startsWith("/login") ||
-    pathname.startsWith("/register") ||
-    pathname.startsWith("/verify-otp") ||
-    pathname.startsWith("/forgot-password") ||
-    pathname.startsWith("/reset-password");
-
+  // Only block access to protected routes when there's no cookie at all.
+  // If the cookie exists but is expired, AuthContext will handle the redirect
+  // after the refresh attempt fails on the client side.
   if (isProtectedRoute && !hasRefreshToken) {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("redirect", pathname);
     return NextResponse.redirect(loginUrl);
-  }
-
-  if (isAuthRoute && hasRefreshToken) {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
   return NextResponse.next();
@@ -49,10 +38,5 @@ export const config = {
     "/dashboard/:path*",
     "/profile/:path*",
     "/admin/:path*",
-    "/login",
-    "/register",
-    "/verify-otp",
-    "/forgot-password",
-    "/reset-password",
   ],
 };

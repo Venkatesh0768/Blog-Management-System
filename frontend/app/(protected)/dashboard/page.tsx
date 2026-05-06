@@ -1,21 +1,33 @@
 "use client";
-import React from "react";
+
+import React, { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { getPublicPosts } from "@/lib/api/post.api";
 import { Page, PostResponseDto } from "@/types/blog.types";
 import PostCard from "@/components/blog/PostCard";
-import { PenLine } from "lucide-react";
+import { PenLine, Loader2 } from "lucide-react";
 
 export default function DashboardPage() {
-  const { user } = useAuth();
+  const { user, status } = useAuth();
+  const router = useRouter();
   const [postsPage, setPostsPage] = useState<Page<PostResponseDto> | null>(null);
   const [loadingPosts, setLoadingPosts] = useState(true);
 
+  // ── Auth guard ──────────────────────────────────────────────────────────────
   useEffect(() => {
-    fetchPosts();
-  }, []);
+    if (status === "unauthenticated") {
+      router.replace("/login?redirect=/dashboard");
+    }
+  }, [status, router]);
+
+  // ── Fetch posts ──────────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (status === "authenticated") {
+      fetchPosts();
+    }
+  }, [status]);
 
   const fetchPosts = async () => {
     try {
@@ -28,6 +40,15 @@ export default function DashboardPage() {
       setLoadingPosts(false);
     }
   };
+
+  // ── Loading state during auth check ──────────────────────────────────────────
+  if (status === "loading" || status === "unauthenticated") {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="w-6 h-6 animate-spin text-[#2a676b]" />
+      </div>
+    );
+  }
 
   return (
   <div className="w-full flex justify-center">

@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/Input";
@@ -7,10 +7,13 @@ import { Button } from "@/components/ui/Button";
 import { Alert } from "@/components/ui/Alert";
 import { AuthCard, AuthHeader } from "@/components/layout/AuthCard";
 import { authApi } from "@/lib/api/auth.api";
+import { useAuth } from "@/context/AuthContext";
 import { isAxiosError } from "axios";
 
 export default function RegisterPage() {
   const router = useRouter();
+  const { status } = useAuth();
+
   const [form, setForm] = useState({
     firstName: "",
     lastName: "",
@@ -21,6 +24,13 @@ export default function RegisterPage() {
   const [errors, setErrors] = useState<Partial<typeof form>>({});
   const [apiError, setApiError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // If already properly authenticated, redirect to dashboard
+  useEffect(() => {
+    if (status === "authenticated") {
+      router.replace("/dashboard");
+    }
+  }, [status, router]);
 
   const validate = () => {
     const e: Partial<typeof form> = {};

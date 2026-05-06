@@ -22,7 +22,7 @@ public class Post extends BaseModel{
     @Column(nullable = false)
     private String title;
 
-    @Column(columnDefinition = "TEXT")
+    @Column(columnDefinition = "MEDIUMTEXT")
     private String content;
 
     @Column(unique = true, nullable = false)

@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/context/AuthContext";
 import { getMyPosts } from "@/lib/api/post.api";
 import { PostResponseDto } from "@/types/blog.types";
 import PostCard from "@/components/blog/PostCard";
@@ -8,12 +10,24 @@ import { Loader2, PenLine } from "lucide-react";
 import Link from "next/link";
 
 export default function MyPostsPage() {
+  const { status } = useAuth();
+  const router = useRouter();
   const [posts, setPosts] = useState<PostResponseDto[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // ── Auth guard ──────────────────────────────────────────────────────────────
   useEffect(() => {
-    fetchPosts();
-  }, []);
+    if (status === "unauthenticated") {
+      router.replace("/login?redirect=/dashboard/posts");
+    }
+  }, [status, router]);
+
+  // ── Fetch posts ──────────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (status === "authenticated") {
+      fetchPosts();
+    }
+  }, [status]);
 
   const fetchPosts = async () => {
     try {
@@ -26,6 +40,15 @@ export default function MyPostsPage() {
       setLoading(false);
     }
   };
+
+  // ── Loading state during auth check ──────────────────────────────────────────
+  if (status === "loading" || status === "unauthenticated") {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="w-6 h-6 animate-spin text-[#2a676b]" />
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-5xl px-6 sm:px-8 py-10">

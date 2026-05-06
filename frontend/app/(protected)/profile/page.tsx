@@ -1,18 +1,34 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Alert } from "@/components/ui/Alert";
 import { useAuth } from "@/context/AuthContext";
 import { userApi } from "@/lib/api/auth.api";
 import { isAxiosError } from "axios";
-import { LogOut, Lock, User } from "lucide-react";
+import { LogOut, Lock, User, Loader2 } from "lucide-react";
 import { initials } from "@/lib/utils/roles";
 import { useRouter } from "next/navigation";
 
 export default function ProfilePage() {
-  const { user, refreshUser, logout } = useAuth();
+  const { user, status, refreshUser, logout } = useAuth();
   const router = useRouter();
+
+  // ── Auth guard ──────────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.replace("/login?redirect=/profile");
+    }
+  }, [status, router]);
+
+  // ── Loading state during auth check ──────────────────────────────────────────
+  if (status === "loading" || status === "unauthenticated") {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="w-6 h-6 animate-spin text-[#2a676b]" />
+      </div>
+    );
+  }
 
   // ── Profile ──────────────────────────────────────────────────────────────
   const [profile, setProfile] = useState({

@@ -17,6 +17,8 @@ public interface PostService {
 
     PostResponseDto getPostById(UUID id);
 
+    PostResponseDto getPostBySlug(String slug);
+
     PostResponseDto updatePost(UpdatePostRequestDto requestDto, UUID uuid);
 
     void deletePost(UUID postId);

@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, Suspense } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Input } from "@/components/ui/Input";
@@ -13,12 +13,19 @@ function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirect = searchParams.get("redirect") ?? "/dashboard";
-  const { login } = useAuth();
+  const { login, status } = useAuth();
 
   const [form, setForm] = useState({ email: "", password: "" });
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
   const [apiError, setApiError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // If already properly authenticated (refresh succeeded), redirect away
+  useEffect(() => {
+    if (status === "authenticated") {
+      router.replace(redirect);
+    }
+  }, [status, redirect, router]);
 
   const validate = () => {
     const e: typeof errors = {};
@@ -39,8 +46,8 @@ function LoginContent() {
       router.push(redirect);
     } catch (err) {
       if (isAxiosError(err)) {
-        const status = err.response?.status;
-        if (status === 403) {
+        const httpStatus = err.response?.status;
+        if (httpStatus === 403) {
           setApiError("Please verify your email before signing in.");
           return;
         }

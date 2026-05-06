@@ -156,7 +156,12 @@ interface PostCardProps {
 }
 
 export default function PostCard({ post, variant = "grid" }: PostCardProps) {
-  const plain = stripHtml(post.content);
+  // Guard against missing post data
+  if (!post || !post.id) {
+    return null;
+  }
+
+  const plain = stripHtml(post.content || "");
   const readTime = Math.max(1, Math.ceil(plain.split(/\s+/).length / 200));
   const date = new Date(post.createdAt).toLocaleDateString("en-US", {
     month: "short",
@@ -167,7 +172,7 @@ export default function PostCard({ post, variant = "grid" }: PostCardProps) {
   // Best cover image: explicit imageUrls first, then first inline <img>
   const coverImage =
     post.imageUrls?.[0] ??
-    firstImageFromContent(post.content) ??
+    firstImageFromContent(post.content || "") ??
     null;
 
   const commentCount = post.commentIds?.length ?? 0;

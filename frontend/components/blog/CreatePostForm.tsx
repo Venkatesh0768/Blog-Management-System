@@ -701,7 +701,11 @@ export default function CreatePostForm() {
 
 // ─── Editor Placeholder ───────────────────────────────────────────────────────
 
-function EditorPlaceholder({ editorRef }: { editorRef: React.RefObject<HTMLDivElement> }) {
+function EditorPlaceholder({
+  editorRef,
+}: {
+  editorRef: React.RefObject<HTMLDivElement | null>;
+}){
   const [show, setShow] = useState(true);
 
   useEffect(() => {
