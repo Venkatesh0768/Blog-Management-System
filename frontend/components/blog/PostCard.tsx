@@ -203,7 +203,7 @@ export default function PostCard({ post, variant = "grid" }: PostCardProps) {
             <span style={{ fontSize: 11, color: "#9a9d9d", fontFamily: "var(--font-sans, Manrope, sans-serif)" }}>{date}</span>
           </div>
 
-          <Link href={`/post/${post.id}`} style={{ textDecoration: "none" }}>
+          <Link href={`/post/${post.slug}`} style={{ textDecoration: "none" }}>
             <h2
               style={{
                 fontFamily: "Georgia, 'Times New Roman', serif",
@@ -243,7 +243,7 @@ export default function PostCard({ post, variant = "grid" }: PostCardProps) {
 
         {/* Image */}
         <div className="featured-img">
-          <Link href={`/post/${post.id}`} style={{ display: "block", textDecoration: "none" }}>
+          <Link href={`/post/${post.slug}`} style={{ display: "block", textDecoration: "none" }}>
             <Thumbnail src={coverImage} title={post.title} size="lg" />
           </Link>
         </div>
@@ -269,7 +269,7 @@ export default function PostCard({ post, variant = "grid" }: PostCardProps) {
             <StatusBadge status={post.postStatus} />
           </div>
 
-          <Link href={`/post/${post.id}`} style={{ textDecoration: "none" }}>
+          <Link href={`/post/${post.slug}`} style={{ textDecoration: "none" }}>
             <h2
               style={{
                 fontFamily: "Georgia, 'Times New Roman', serif",
@@ -308,7 +308,7 @@ export default function PostCard({ post, variant = "grid" }: PostCardProps) {
         </div>
 
         {/* Thumbnail */}
-        <Link href={`/post/${post.id}`} style={{ textDecoration: "none", flexShrink: 0 }}>
+        <Link href={`/post/${post.slug}`} style={{ textDecoration: "none", flexShrink: 0 }}>
           <Thumbnail src={coverImage} title={post.title} size="md" />
         </Link>
       </article>
@@ -338,7 +338,7 @@ export default function PostCard({ post, variant = "grid" }: PostCardProps) {
       }}
     >
       {/* Cover */}
-      <Link href={`/post/${post.id}`} style={{ display: "block", textDecoration: "none" }}>
+      <Link href={`/post/${post.slug}`} style={{ display: "block", textDecoration: "none" }}>
         <div style={{ height: 176, overflow: "hidden" }}>
           <Thumbnail src={coverImage} title={post.title} size="lg" />
         </div>
@@ -350,7 +350,7 @@ export default function PostCard({ post, variant = "grid" }: PostCardProps) {
           <StatusBadge status={post.postStatus} />
         </div>
 
-        <Link href={`/post/${post.id}`} style={{ textDecoration: "none" }}>
+        <Link href={`/post/${post.slug}`} style={{ textDecoration: "none" }}>
           <h2
             style={{
               fontFamily: "Georgia, 'Times New Roman', serif",

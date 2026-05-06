@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useRef } from "react";
 import { useParams } from "next/navigation";
-import { getPublicPostById } from "@/lib/api/post.api";
+import { getPublicPostBySlug } from "@/lib/api/post.api";
 import { PostResponseDto } from "@/types/blog.types";
 import { Loader2, ArrowLeft, BookOpen, MessageCircle } from "lucide-react";
 import Link from "next/link";
@@ -154,7 +154,7 @@ const colStyle: React.CSSProperties = {
 };
 
 export default function PostPage() {
-  const { id } = useParams() as { id: string };
+  const { slug } = useParams() as { slug: string };
   const [post, setPost] = useState<PostResponseDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -163,7 +163,7 @@ export default function PostPage() {
   useEffect(() => {
     const fetchPost = async () => {
       try {
-        const data = await getPublicPostById(id);
+        const data = await getPublicPostBySlug(slug);
         setPost(data);
       } catch {
         setError("Failed to load this story. It may not exist or has been removed.");
@@ -172,7 +172,7 @@ export default function PostPage() {
       }
     };
     fetchPost();
-  }, [id]);
+  }, [slug]);
 
   const date = post
     ? new Date(post.createdAt).toLocaleDateString("en-US", {

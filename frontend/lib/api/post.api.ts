@@ -22,6 +22,11 @@ export const getPublicPostById = async (id: string): Promise<PostResponseDto> =>
   return response.data;
 };
 
+export const getPublicPostBySlug = async (slug: string): Promise<PostResponseDto> => {
+  const response = await apiClient.get<PostResponseDto>(`/public/posts/slug/${slug}`);
+  return response.data;
+};
+
 export const createPost = async (
   data: CreatePostRequestDto
 ): Promise<PostResponseDto> => {

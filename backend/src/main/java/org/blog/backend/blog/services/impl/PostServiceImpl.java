@@ -113,6 +113,15 @@ public class PostServiceImpl implements PostService {
     }
 
     @Override
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
+    public PostResponseDto getPostBySlug(String slug) {
+        Post post = postRepository.findBySlug(slug)
+                .orElseThrow(() -> new PostNotFoundException("The post is not found by this slug"));
+
+        return mapToResponse(post);
+    }
+
+    @Override
     public PostResponseDto updatePost(UpdatePostRequestDto requestDto, UUID postId) {
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new PostNotFoundException("The post is not found"));

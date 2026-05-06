@@ -34,4 +34,9 @@ public class PublicPostController {
         return new ResponseEntity<>(postService.getPostById(postId), HttpStatus.OK);
     }
 
+    @GetMapping("/slug/{slug}")
+    public ResponseEntity<PostResponseDto> getPostBySlug(@PathVariable String slug) {
+        return new ResponseEntity<>(postService.getPostBySlug(slug), HttpStatus.OK);
+    }
+
 }

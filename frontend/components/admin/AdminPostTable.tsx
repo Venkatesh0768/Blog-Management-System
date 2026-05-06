@@ -331,7 +331,7 @@ export function AdminPostTable({ posts, onRefresh }: AdminPostTableProps) {
                         }}
                       >
                         <Link
-                          href={`/post/${post.id}`}
+                          href={`/post/${post.slug}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           title="View post"
