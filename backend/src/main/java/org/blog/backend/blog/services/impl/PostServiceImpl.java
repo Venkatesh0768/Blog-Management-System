@@ -53,7 +53,7 @@ public class PostServiceImpl implements PostService {
         Post post = Post.builder()
                 .title(normalizedTitle)
                 .content(requestDto.getContent())
-                .slug(generateSlug(normalizedTitle))
+                .slug(generateUniqueSlug(normalizedTitle))
                 .postStatus(requestDto.getPostStatus())
                 .user(user)
                 .build();
@@ -127,7 +127,7 @@ public class PostServiceImpl implements PostService {
                 .orElseThrow(() -> new PostNotFoundException("The post is not found"));
         if (requestDto.getTitle() != null) {
             post.setTitle(requestDto.getTitle().trim());
-            post.setSlug(generateSlug(post.getTitle()));
+            post.setSlug(generateUniqueSlug(post.getTitle()));
         }
 
         // 4. Update content
@@ -201,10 +201,21 @@ public class PostServiceImpl implements PostService {
                 .build();
     }
 
-    private String generateSlug(String title) {
-        return title.toLowerCase()
+    private String generateUniqueSlug(String title) {
+
+        String baseSlug = title.toLowerCase()
                 .trim()
                 .replaceAll("[^a-z0-9]+", "-")
                 .replaceAll("(^-|-$)", "");
+
+        String slug = baseSlug;
+        int count = 1;
+
+        while (postRepository.existsBySlug(slug)) {
+            slug = baseSlug + "-" + count;
+            count++;
+        }
+
+        return slug;
     }
 }

@@ -23,4 +23,5 @@ public interface PostRepository extends JpaRepository<Post , UUID> {
     @EntityGraph(attributePaths = {"user"})
     Optional<Post> findBySlug(String slug);
 
+    boolean existsBySlug(String slug);
 }
